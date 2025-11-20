@@ -19,66 +19,30 @@ const materialSchema = new mongoose.Schema(
 
 const courseSchema = new mongoose.Schema(
   {
-    code: {
-      type: String,
-      required: true,
-      unique: true,
-      uppercase: true,
-      trim: true,
-    },
-    name: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    description: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    instructor: {
-      type: String,
-      required: true,
-      trim: true,
-    },
-    instructorEmail: {
-      type: String,
-      trim: true,
-      lowercase: true,
-    },
-    schedule: {
-      type: String,
-      required: true,
-    },
-    location: {
-      type: String,
-      default: 'TBD',
-    },
-    credits: {
-      type: Number,
-      required: true,
-      min: 1,
-      max: 6,
-    },
-    capacity: {
-      type: Number,
-      required: true,
-      min: 1,
-    },
-    enrolled: {
-      type: Number,
-      default: 0,
-      min: 0,
-    },
-    status: {
-      type: String,
-      enum: ['draft', 'published', 'archived'],
-      default: 'published',
-    },
-    tags: {
-      type: [String],
-      default: [],
-    },
+    code: {type: String, required: true, unique: true, uppercase: true, trim: true},
+
+    name: {type: String, required: true, trim: true},
+
+    description: {type: String, required: true,trim: true},
+
+    instructor: {type: String, required: true, trim: true},
+    
+    instructorEmail: {type: String, trim: true, lowercase: true},
+    
+    schedule: {type: String, required: true},
+    
+    location: {type: String, default: 'TBD'},
+    
+    credits: {type: Number, required: true, min: 1, max: 6},
+    
+    capacity: {type: Number, required: true, min: 1},
+    
+    enrolled: {type: Number, default: 0, min: 0},
+    
+    status: {type: String, enum: ['draft', 'published', 'archived'], default: 'published'},
+    
+    tags: {type: [String], default: []},
+    
     students: [
       {
         type: mongoose.Schema.Types.ObjectId,
