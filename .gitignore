@@ -31,3 +31,20 @@ yarn-error.log*
 
 # OS
 Thumbs.db
+
+# Ignore nested node_modules (packages inside subfolders like /server)
+**/node_modules/
+
+# Server uploads and generated files
+/server/uploads/
+
+# Local DB files and caches
+*.db
+*.sqlite
+
+# Logs
+/server/*.log
+npm-debug.log*
+
+# Keep example env files
+!.env.example

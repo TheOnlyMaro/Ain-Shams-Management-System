@@ -17,9 +17,13 @@ if (fs.existsSync(serverEnv)) {
 }
 
 const Application = require('./models/Application');
+// Mount merged auth and curriculum routes (added by merge)
+const authRoutes = require('./routes/authRoutes');
+const courseRoutes = require('./routes/courseRoutes');
 
 const PORT = process.env.PORT || 4000;
-const MONGO_URI = process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/cto_db';
+// Default placeholder for MongoDB Atlas. Replace with your Atlas connection string in `.env`.
+const MONGO_URI = process.env.MONGO_URI || 'mongodb+srv://<username>:<password>@cluster0.mongodb.net/ainshams_db?retryWrites=true&w=majority';
 
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -51,16 +55,12 @@ const upload = multer({
 });
 
 const app = express();
-<<<<<<< HEAD
-app.use(cors());
-=======
 app.use(cors({
   origin: (origin, cb) => cb(null, true), // allow all origins; replace with specific origin in production
   credentials: true,
   exposedHeaders: ['Content-Disposition', 'X-Total-Count'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Staff-Id', 'X-Staff-Token', 'X-Requested-With'],
 }));
->>>>>>> 99749da4f337fe38c463f12c1c119177a2958084
 app.use(express.json());
 app.use('/uploads', express.static(UPLOAD_DIR));
 
@@ -131,6 +131,10 @@ const connectWithRetry = () => {
 };
 connectWithRetry();
 
+// Mount merged routes
+app.use('/api/auth', authRoutes);
+app.use('/api/curriculum', courseRoutes);
+
 // GET all
 app.get('/api/applications', async (req, res) => {
   try {
@@ -193,8 +197,6 @@ app.get('/api/applications/search', async (req, res) => {
   }
 });
 
-<<<<<<< HEAD
-=======
 // simple staff auth middleware: requires X-Staff-Id and matching token (if set)
 function requireStaff(req, res, next) {
   const staffId = req.headers['x-staff-id'];
@@ -207,7 +209,6 @@ function requireStaff(req, res, next) {
   return next();
 }
 
->>>>>>> 99749da4f337fe38c463f12c1c119177a2958084
 // Health endpoint
 app.get('/api/health', (req, res) => {
   res.json({
@@ -321,8 +322,6 @@ app.post(
   }
 );
 
-<<<<<<< HEAD
-=======
 // Admin: update application status and record activity log + notify applicant
 app.put('/api/applications/:id/status', requireStaff, async (req, res) => {
   try {
@@ -431,7 +430,6 @@ if (fs.existsSync(authModulePath)) {
   console.log('No ainshamsmanagementsystem folder found — skipping auth module mount.');
 }
 
->>>>>>> 99749da4f337fe38c463f12c1c119177a2958084
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT}`);
 });

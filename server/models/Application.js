@@ -6,8 +6,6 @@ const FileMetaSchema = new mongoose.Schema({
   filename: String,
 }, { _id: false });
 
-<<<<<<< HEAD
-=======
 const ActivitySchema = new mongoose.Schema({
   staffId: { type: String },
   action: { type: String }, // e.g. "status:approved"
@@ -22,7 +20,6 @@ const NotificationSchema = new mongoose.Schema({
   delivered: { type: Boolean, default: false },
 }, { _id: false });
 
->>>>>>> 99749da4f337fe38c463f12c1c119177a2958084
 const ApplicationSchema = new mongoose.Schema({
   studentName: { type: String },
   email: {
@@ -55,11 +52,8 @@ const ApplicationSchema = new mongoose.Schema({
   selfiePhoto: { type: String },
   certificates: { type: [FileMetaSchema], default: [] },
   documents: { type: [FileMetaSchema], default: [] },
-<<<<<<< HEAD
-=======
   activityLogs: { type: [ActivitySchema], default: [] },
   notifications: { type: [NotificationSchema], default: [] },
->>>>>>> 99749da4f337fe38c463f12c1c119177a2958084
   submittedAt: { type: Date, default: Date.now },
   applicationStatus: { type: String, default: 'pending' },
   rejectionReason: { type: String, default: null },
