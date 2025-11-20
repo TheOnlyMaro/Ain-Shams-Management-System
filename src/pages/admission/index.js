@@ -1,0 +1,1 @@
+export { AdmissionPage } from './AdmissionPage';
