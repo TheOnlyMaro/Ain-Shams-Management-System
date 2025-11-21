@@ -46,15 +46,14 @@ export const LoginPage = () => {
 
     if (Object.keys(newErrors).length === 0) {
       try {
-        const userData = {
-          email: formData.email,
-          name: formData.email.split('@')[0],
-          role,
-          token: 'auth_token_' + Date.now(),
-        };
-        login(userData);
-        setSuccessMessage('Login successful! Redirecting...');
-        setTimeout(() => navigate('/dashboard'), 1500);
+        // call login through context which will use backend when available
+        const user = await login({ email: formData.email, password: formData.password });
+        if (user) {
+          setSuccessMessage('Login successful! Redirecting...');
+          setTimeout(() => navigate('/dashboard'), 1500);
+        } else {
+          setErrorMessage('Login failed.');
+        }
       } catch (error) {
         setErrorMessage('Login failed. Please try again.');
       }

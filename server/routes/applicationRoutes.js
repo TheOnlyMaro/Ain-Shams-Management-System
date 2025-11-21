@@ -2,7 +2,7 @@ const express = require('express');
 const multer = require('multer');
 const path = require('path');
 const applicationController = require('../controllers/applicationController');
-const { protect } = require('../middleware/authMiddleware');
+const { authenticate, authorizeRole } = require('../middleware/authMiddleware');
 
 // Set up Multer for file uploads (same as before)
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
@@ -37,6 +37,9 @@ router.use((req, res, next) => {
   next();
 });
 
+// Health endpoint should be before the parameterized `/:id` route to avoid
+// treating 'health' as an ObjectId (which causes CastError).
+router.get('/health', applicationController.health);
 router.get('/', applicationController.getAllApplications);
 router.get('/search', applicationController.searchByNationalId);
 router.get('/:id', applicationController.getApplicationById);
@@ -49,8 +52,9 @@ router.post(
   ]),
   applicationController.createApplication
 );
-router.put('/:id/status', protect, applicationController.updateApplicationStatus);
-router.get('/:id/activity', protect, applicationController.getActivityLogs);
-router.get('/health', applicationController.health);
+// require authenticated user and either admin role or admissions staff (staffType === 'admissions')
+// Note: we remove the broad 'staff' role from this check so only staff with staffType 'admissions' are allowed.
+router.put('/:id/status', authenticate, authorizeRole(['admin','admissions']), applicationController.updateApplicationStatus);
+router.get('/:id/activity', authenticate, authorizeRole(['admin','admissions']), applicationController.getActivityLogs);
 
 module.exports = router;

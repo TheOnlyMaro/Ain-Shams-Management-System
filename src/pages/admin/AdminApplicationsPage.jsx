@@ -4,6 +4,7 @@ import { CheckCircle, XCircle, Clock, Eye, FileText } from 'lucide-react';
 // removed: import { useAdmission } from '../../context/AdmissionContext';
 import { Card, CardHeader, CardBody, Button, Modal } from '../../components/common';
 import { formatDate } from '../../utils/dateUtils';
+import { useAuth } from '../../context/AuthContext';
 
 export const AdminApplicationsPage = () => {
   const navigate = useNavigate();
@@ -15,9 +16,8 @@ export const AdminApplicationsPage = () => {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
 
-  // simple staff auth inputs (required to call admin endpoints)
-  const [staffId, setStaffId] = useState(localStorage.getItem('staffId') || '');
-  const [staffToken, setStaffToken] = useState(localStorage.getItem('staffToken') || '');
+  // authentication (access token provided by AuthContext)
+  const { authToken, user, isAuthenticated } = useAuth();
 
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedApp, setSelectedApp] = useState(null);
@@ -27,10 +27,7 @@ export const AdminApplicationsPage = () => {
   const [showReviewModal, setShowReviewModal] = useState(false);
   const [reviewData, setReviewData] = useState({ status: 'approved', feedback: '' });
 
-  useEffect(() => {
-    localStorage.setItem('staffId', staffId);
-    localStorage.setItem('staffToken', staffToken);
-  }, [staffId, staffToken]);
+  // no local staff-token handling here; backend expects Authorization: Bearer <token>
 
   const fetchApplications = async () => {
     setLoading(true);
@@ -104,16 +101,12 @@ export const AdminApplicationsPage = () => {
     const appId = selectedAppDetails?.nationalId || selectedApp?.id;
     if (!appId) return alert('No application selected');
 
-    // If staff credentials missing, prompt user to enter them (so reviewer can provide credentials inline)
-    if (!staffId) {
-      const s = window.prompt('Enter your Staff ID (required to submit):', '');
-      if (!s) return alert('Staff ID required to submit');
-      setStaffId(s);
-    }
-    if (!staffToken) {
-      const t = window.prompt('Enter your Staff Token (required to submit):', '');
-      if (!t) return alert('Staff Token required to submit');
-      setStaffToken(t);
+    // require user to be signed in and have an access token
+    if (!authToken) {
+      // redirect to login page or prompt
+      const go = window.confirm('You must be signed in to submit a review. Go to login page now?');
+      if (go) return navigate('/auth/login');
+      return;
     }
 
     setSubmitting(true);
@@ -122,8 +115,7 @@ export const AdminApplicationsPage = () => {
         method: 'PUT',
         headers: {
           'Content-Type': 'application/json',
-          'X-Staff-Id': localStorage.getItem('staffId') || staffId,
-          'X-Staff-Token': localStorage.getItem('staffToken') || staffToken,
+          'Authorization': `Bearer ${authToken}`,
         },
         body: JSON.stringify({ status: reviewData.status, note: reviewData.feedback }),
       });

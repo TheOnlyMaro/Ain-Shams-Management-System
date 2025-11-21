@@ -65,10 +65,15 @@ export const SignupPage = () => {
           role,
           specialInfo: formData.specialInfo,
           createdAt: new Date().toISOString(),
+          password: formData.password,
         };
-        signup(userData);
-        setSuccessMessage('Account created successfully! Redirecting to dashboard...');
-        setTimeout(() => navigate('/dashboard'), 1500);
+        const created = await signup(userData);
+        if (created) {
+          setSuccessMessage('Account created successfully! Redirecting to dashboard...');
+          setTimeout(() => navigate('/dashboard'), 1500);
+        } else {
+          setErrorMessage('Signup failed');
+        }
       } catch (error) {
         setErrorMessage('Signup failed. Please try again.');
       }

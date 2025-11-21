@@ -1,6 +1,7 @@
 const jwt = require('jsonwebtoken');
 
-exports.protect = (req, res, next) => {
+// Authenticate: verifies access (JWT) token and attaches `req.user` and `req.staffId`.
+exports.authenticate = (req, res, next) => {
   let token = null;
   const authHeader = req.headers.authorization || req.headers.Authorization;
   if (authHeader && authHeader.startsWith('Bearer ')) {
@@ -15,9 +16,30 @@ exports.protect = (req, res, next) => {
     const secret = process.env.JWT_SECRET || 'replace_me_with_strong_secret';
     const decoded = jwt.verify(token, secret);
     req.user = decoded;
+    // convenience: set staffId for legacy code that expects it
+    req.staffId = decoded.id || decoded._id || decoded.email;
     next();
   } catch (err) {
     console.error('Auth middleware token error', err);
     return res.status(401).json({ message: 'Not authorized, token invalid' });
   }
+};
+
+// authorizeRole: factory that returns middleware to check user role or staffType
+exports.authorizeRole = (required) => (req, res, next) => {
+  if (!req.user) return res.status(401).json({ message: 'Not authorized' });
+  const role = req.user.role;
+  // allow if user has the role (e.g., 'admin' or 'staff')
+  if (Array.isArray(required)) {
+    if (required.includes(role)) return next();
+  } else {
+    if (role === required) return next();
+  }
+
+  // special-case: allow admissions staff via staffType in token payload
+  if (req.user.staffType && (required === 'admissions' || (Array.isArray(required) && required.includes('admissions')))) {
+    if (req.user.staffType === 'admissions') return next();
+  }
+
+  return res.status(403).json({ message: 'Forbidden: insufficient role' });
 };
