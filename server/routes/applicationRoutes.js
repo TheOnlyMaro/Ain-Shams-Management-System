@@ -35,12 +35,17 @@ const router = express.Router();
 
 // Health endpoint
 router.get('/health', applicationController.health);
-// Prefix all with /applications to match frontend
-router.get('/applications', applicationController.getAllApplications);
-router.get('/applications/search', applicationController.searchByNationalId);
-router.get('/applications/:id', applicationController.getApplicationById);
+
+// only admins can list all applications
+router.get('/', authenticate, authorizeRole(['admin']), applicationController.getAllApplications);
+// search: allow admin or require matching email (ownership) when searching by nationalId
+router.get('/search', optionalAuthenticate, applicationController.searchByNationalId);
+// get by id: allow optional auth (admins will be recognized); non-admins must prove ownership in controller
+router.get('/:id', optionalAuthenticate, applicationController.getApplicationById);
+
 router.post(
-  '/applications',
+  '/',
+  rejectIfAuthenticated,
   upload.fields([
     { name: 'idPhoto', maxCount: 1 },
     { name: 'selfiePhoto', maxCount: 1 },

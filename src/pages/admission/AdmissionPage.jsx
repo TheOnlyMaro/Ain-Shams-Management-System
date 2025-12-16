@@ -20,25 +20,18 @@ class ErrorBoundary extends React.Component {
     console.error('ErrorBoundary caught:', error, info);
   }
   reset = () => this.setState({ hasError: false, error: null });
+  
   render() {
     if (this.state.hasError) {
       return (
-        <div className="min-h-screen flex items-center justify-center p-8">
-          <div className="max-w-xl w-full bg-white p-6 rounded shadow text-center">
-            <h2 className="text-2xl font-semibold mb-2">Something went wrong</h2>
-            <p className="text-sm text-secondary-600 mb-4">An unexpected error occurred while rendering this page.</p>
-            <pre className="text-xs text-left bg-gray-100 p-3 rounded mb-4 overflow-auto" style={{maxHeight: 200}}>
-              {String(this.state.error && this.state.error.toString())}
-            </pre>
-            <div className="flex items-center justify-center gap-3">
-              <button
-                onClick={() => this.reset()}
-                className="px-4 py-2 bg-primary-600 text-white rounded"
-              >
-                Try again
-              </button>
+        <div className="min-h-screen flex items-center justify-center bg-red-50">
+          <Card>
+            <div className="text-center">
+              <h2 className="text-xl font-bold text-red-800 mb-2">Something went wrong</h2>
+              <p className="text-secondary-600 mb-4">{this.state.error?.message}</p>
+              <Button variant="primary" onClick={this.reset}>Try again</Button>
             </div>
-          </div>
+          </Card>
         </div>
       );
     }
@@ -48,25 +41,19 @@ class ErrorBoundary extends React.Component {
 
 export const AdmissionPage = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
-  // Backend API base (backend runs on port 4000). Use Vite env variable VITE_API_URL if set.
-  const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
-
-  // applications loaded from backend
+  const { user, isAuthenticated, userRole } = useAuth();
   const [applications, setApplications] = useState([]);
   const [showNewApplicationModal, setShowNewApplicationModal] = useState(false);
-
-  // backend availability state
   const [backendAvailable, setBackendAvailable] = useState(true);
-  const [backendError, setBackendError] = useState(null);
+  const [backendError, setBackendError] = useState('');
+  const API_BASE = import.meta.env.VITE_API_URL ?? 'http://localhost:4000';
 
-  // expanded form data to include requested fields + files + nationalId
   const [formData, setFormData] = useState({
     appliedProgram: '',
     gpa: '',
     testScore: '',
-    studentName: user?.name || '',
-    email: user?.email || '',
+    studentName: '',
+    email: '',
     age: '',
     nationalId: '',
     idPhoto: null,
@@ -74,53 +61,55 @@ export const AdmissionPage = () => {
     certificates: [],
   });
 
-  // fetch list from backend (retryable)
   const fetchApplications = async () => {
     try {
-      setBackendError(null);
       const res = await fetch(`${API_BASE}/api/applications`);
-      if (!res.ok) {
-        const txt = await res.text().catch(() => '');
-        throw new Error(`Server responded ${res.status} ${txt}`);
-      }
+      if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
-      // normalize upload urls to absolute
       const mapUrl = (v) => (typeof v === 'string' && v.startsWith('/uploads') ? `${API_BASE}${v}` : v);
-      const normalized = data.map((a) => ({
-        ...a,
-        idPhoto: mapUrl(a.idPhoto),
-        selfiePhoto: mapUrl(a.selfiePhoto),
-        certificates: (a.certificates || []).map((c) => ({ ...c, url: mapUrl(c.url) })),
-        documents: (a.documents || []).map((d) => ({ ...d, url: mapUrl(d.url) })),
+      const normalized = data.map((app) => ({
+        ...app,
+        idPhoto: mapUrl(app.idPhoto),
+        selfiePhoto: mapUrl(app.selfiePhoto),
+        certificates: (app.certificates || []).map((c) => ({ ...c, url: mapUrl(c.url) })),
+        documents: (app.documents || []).map((d) => ({ ...d, url: mapUrl(d.url) })),
       }));
       setApplications(normalized);
       setBackendAvailable(true);
-      setBackendError(null);
     } catch (err) {
-      console.error('fetchApplications error:', err);
+      console.error('Fetch error:', err);
       setBackendAvailable(false);
-      setBackendError(String(err.message || err));
-      setApplications([]); // clear to avoid stale data
+      setBackendError(err.message);
     }
   };
 
   useEffect(() => {
-    fetchApplications();
+    if (userRole === 'admin') {
+      fetchApplications();
+    } else {
+      setApplications([]);
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [userRole]);
 
   // search / details modal state
   const [searchNationalId, setSearchNationalId] = useState('');
+  const [searchEmail, setSearchEmail] = useState('');
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [showDetailsModal, setShowDetailsModal] = useState(false);
+  const [localApps, setLocalApps] = useState([]);
 
-  const userApplications = applications.filter((app) => app.email === user?.email) || [];
+  const userApplications = user ? (applications.filter((app) => app.email === user?.email) || []) : localApps;
 
   const handleCreateApplication = (e) => {
     e.preventDefault();
 
     if (!backendAvailable) {
       return alert(`Backend unreachable (${API_BASE}). Start the server (server folder) and retry.`);
+    }
+
+    if (isAuthenticated) {
+      return alert('Logged-in users cannot submit admissions. Please log out to apply.');
     }
 
     // basic client-side validation
@@ -175,14 +164,16 @@ export const AdmissionPage = () => {
           documents: (created.documents || []).map((d) => ({ ...d, url: mapUrl(d.url) })),
         };
         setApplications((prev) => [normalized, ...prev]);
+        // if unauthenticated, keep a local copy so applicant can view their own submissions in this session
+        if (!isAuthenticated) setLocalApps((prev) => [normalized, ...prev]);
 
         // reset form UI
         setFormData({
           appliedProgram: '',
           gpa: '',
           testScore: '',
-          studentName: user?.name || '',
-          email: user?.email || '',
+          studentName: '',
+          email: '',
           age: '',
           nationalId: '',
           idPhoto: null,
@@ -222,13 +213,37 @@ export const AdmissionPage = () => {
   // search by national id in existing applications (client-side). If backend search required, replace with API call.
   const handleSearchByNationalId = () => {
     if (!searchNationalId) return alert('Enter a national ID to search');
-    const found = applications.find((a) => String(a.nationalId) === String(searchNationalId));
-    if (found) {
-      setSelectedApplication(found);
-      setShowDetailsModal(true);
-    } else {
-      alert('No application found for that National ID');
-    }
+    (async () => {
+      try {
+        if (!backendAvailable) return alert('Backend unreachable');
+        // Admins may omit email; applicants must provide the applicant email to view their application
+        const q = new URLSearchParams();
+        q.set('nationalId', searchNationalId);
+        if (userRole !== 'admin') {
+          if (!searchEmail) return alert('Please enter the applicant email to search by National ID');
+          q.set('email', searchEmail);
+        }
+        const res = await fetch(`${API_BASE}/api/applications/search?${q.toString()}`);
+        if (!res.ok) {
+          if (res.status === 404) return alert('No application found for that National ID');
+          throw new Error('Search failed');
+        }
+        const data = await res.json();
+        const mapUrl = (v) => (typeof v === 'string' && v.startsWith('/uploads') ? `${API_BASE}${v}` : v);
+        const normalized = {
+          ...data,
+          idPhoto: mapUrl(data.idPhoto),
+          selfiePhoto: mapUrl(data.selfiePhoto),
+          certificates: (data.certificates || []).map((c) => ({ ...c, url: mapUrl(c.url) })),
+          documents: (data.documents || []).map((d) => ({ ...d, url: mapUrl(d.url) })),
+        };
+        setSelectedApplication(normalized);
+        setShowDetailsModal(true);
+      } catch (err) {
+        console.error('search error', err);
+        alert('Search failed');
+      }
+    })();
   };
 
   const openDetails = (application) => {
@@ -269,58 +284,69 @@ export const AdmissionPage = () => {
                   onChange={(e) => setSearchNationalId(e.target.value)}
                   className="px-3 py-2 border rounded-lg"
                 />
+                <input
+                  type="email"
+                  placeholder="Applicant Email (required to view)"
+                  value={searchEmail}
+                  onChange={(e) => setSearchEmail(e.target.value)}
+                  className="px-3 py-2 border rounded-lg"
+                />
                 <Button variant="outline" onClick={handleSearchByNationalId} className="flex items-center gap-2">
                   <Search className="w-4 h-4" /> Search
                 </Button>
               </div>
 
-              <Button
-                variant="primary"
-                size="lg"
-                onClick={() => setShowNewApplicationModal(true)}
-                className="flex items-center gap-2"
-              >
-                <Plus className="w-5 h-5" />
-                New Application
-              </Button>
+              {!isAuthenticated && (
+                <Button
+                  variant="primary"
+                  size="lg"
+                  onClick={() => setShowNewApplicationModal(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Plus className="w-5 h-5" />
+                  New Application
+                </Button>
+              )}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
-            <Card>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-secondary-600 text-sm">Total Applications</p>
-                  <p className="text-3xl font-bold text-secondary-800">{userApplications.length}</p>
+          {userRole === 'admin' && (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+              <Card>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-secondary-600 text-sm">Total Applications</p>
+                    <p className="text-3xl font-bold text-secondary-800">{userApplications.length}</p>
+                  </div>
+                  <FileText className="w-8 h-8 text-primary-200" />
                 </div>
-                <FileText className="w-8 h-8 text-primary-200" />
-              </div>
-            </Card>
+              </Card>
 
-            <Card>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-secondary-600 text-sm">Approved</p>
-                  <p className="text-3xl font-bold text-green-600">
-                    {userApplications.filter((a) => a.applicationStatus === 'approved').length}
-                  </p>
+              <Card>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-secondary-600 text-sm">Approved</p>
+                    <p className="text-3xl font-bold text-green-600">
+                      {userApplications.filter((a) => a.applicationStatus === 'approved').length}
+                    </p>
+                  </div>
+                  <CheckCircle className="w-8 h-8 text-green-200" />
                 </div>
-                <CheckCircle className="w-8 h-8 text-green-200" />
-              </div>
-            </Card>
+              </Card>
 
-            <Card>
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-secondary-600 text-sm">Pending</p>
-                  <p className="text-3xl font-bold text-orange-600">
-                    {userApplications.filter((a) => a.applicationStatus === 'pending').length}
-                  </p>
+              <Card>
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-secondary-600 text-sm">Pending</p>
+                    <p className="text-3xl font-bold text-orange-600">
+                      {userApplications.filter((a) => a.applicationStatus === 'pending').length}
+                    </p>
+                  </div>
+                  <Clock className="w-8 h-8 text-orange-200" />
                 </div>
-                <Clock className="w-8 h-8 text-orange-200" />
-              </div>
-            </Card>
-          </div>
+              </Card>
+            </div>
+          )}
 
           {userApplications.length > 0 ? (
             <div className="space-y-4">
@@ -659,3 +685,5 @@ export const AdmissionPage = () => {
     </ErrorBoundary>
   );
 };
+
+export default AdmissionPage;

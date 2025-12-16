@@ -54,12 +54,35 @@ exports.getApplicationById = async (req, res) => {
         doc = await Application.findById(key).lean();
       }
       if (!doc) return res.status(404).json({ message: 'Not found' });
-      return res.json({ ...doc, id: doc.nationalId ?? String(doc._id) });
+      // Access control: admins and admissions staff may view any application.
+      const isAdmin = req.user && (req.user.role === 'admin' || req.user.staffType === 'admissions');
+      if (isAdmin) return res.json({ ...doc, id: doc.nationalId ?? String(doc._id) });
+
+      // Non-admins: allow access only when requesting by nationalId and providing the applicant email that matches.
+      if (isNationalId) {
+        const qEmail = (req.query.email || '').toLowerCase();
+        const appEmail = (doc.email || '').toLowerCase();
+        if (qEmail && appEmail && qEmail === appEmail) {
+          return res.json({ ...doc, id: doc.nationalId ?? String(doc._id) });
+        }
+        return res.status(403).json({ message: 'Forbidden: provide matching applicant email to view this application' });
+      }
+
+      return res.status(403).json({ message: 'Forbidden' });
     }
     logFallbackUsage('GET application by id');
     const found = isNationalId ? inMemoryApps.find((a) => a.nationalId === key) : inMemoryApps.find((a) => a.id === key);
     if (!found) return res.status(404).json({ message: 'Not found' });
-    return res.json(found);
+    // fallback access control
+    const isAdminFb = req.user && (req.user.role === 'admin' || req.user.staffType === 'admissions');
+    if (isAdminFb) return res.json(found);
+    if (isNationalId) {
+      const qEmail = (req.query.email || '').toLowerCase();
+      const appEmail = (found.email || '').toLowerCase();
+      if (qEmail && appEmail && qEmail === appEmail) return res.json(found);
+      return res.status(403).json({ message: 'Forbidden: provide matching applicant email to view this application' });
+    }
+    return res.status(403).json({ message: 'Forbidden' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
@@ -71,15 +94,27 @@ exports.searchByNationalId = async (req, res) => {
   const nationalId = req.query.nationalId;
   if (!nationalId) return res.status(400).json({ message: 'nationalId required' });
   try {
+    // Access control: if authenticated as admin/admissions staff, allow any result.
+    const isAdmin = req.user && (req.user.role === 'admin' || req.user.staffType === 'admissions');
     if (req.mongoConnected) {
       const doc = await Application.findOne({ nationalId }).lean();
       if (!doc) return res.status(404).json({ message: 'Not found' });
-      return res.json({ ...doc, id: doc.nationalId ?? String(doc._id) });
+      if (isAdmin) return res.json({ ...doc, id: doc.nationalId ?? String(doc._id) });
+      // non-admin: require matching applicant email provided as query param
+      const qEmail = (req.query.email || '').toLowerCase();
+      const appEmail = (doc.email || '').toLowerCase();
+      if (qEmail && appEmail && qEmail === appEmail) return res.json({ ...doc, id: doc.nationalId ?? String(doc._id) });
+      return res.status(403).json({ message: 'Forbidden: provide applicant email to view this application' });
     }
     logFallbackUsage('SEARCH by nationalId');
     const found = inMemoryApps.find((a) => a.nationalId === nationalId);
     if (!found) return res.status(404).json({ message: 'Not found' });
-    return res.json(found);
+    const isAdminFb = req.user && (req.user.role === 'admin' || req.user.staffType === 'admissions');
+    if (isAdminFb) return res.json(found);
+    const qEmail = (req.query.email || '').toLowerCase();
+    const appEmail = (found.email || '').toLowerCase();
+    if (qEmail && appEmail && qEmail === appEmail) return res.json(found);
+    return res.status(403).json({ message: 'Forbidden: provide applicant email to view this application' });
   } catch (err) {
     console.error(err);
     res.status(500).json({ message: 'Server error' });
