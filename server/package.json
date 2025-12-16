@@ -4,7 +4,9 @@
   "main": "index.js",
   "license": "MIT",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "smoke:sql": "node scripts/smoke-sql.js",
+    "db:apply": "node scripts/apply-schema.js"
   },
   "dependencies": {
     "bcrypt": "^5.0.1",
