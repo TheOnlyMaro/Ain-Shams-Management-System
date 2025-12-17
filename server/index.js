@@ -31,18 +31,12 @@ app.use(cors({
 app.use(express.json());
 app.use('/uploads', express.static(UPLOAD_DIR));
 
-// SQL Mode: verify Postgres connectivity at startup
-const { pool } = require('./db/sql');
-pool.query('SELECT 1').then(() => {
-  console.log('Connected to Supabase Postgres');
-}).catch((err) => {
-  console.error('Failed to connect to Supabase Postgres', err.message || err);
-});
+// Running in fallback mode (no database required)
 
 // Mount routes
 app.use('/api/auth', authRoutes);
 app.use('/api/curriculum', courseRoutes);
-app.use('/api/admission', applicationRoutes);
+app.use('/api/applications', applicationRoutes);
 
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT} (SQL mode)`);
