@@ -43,3 +43,48 @@ exports.authorizeRole = (required) => (req, res, next) => {
 
   return res.status(403).json({ message: 'Forbidden: insufficient role' });
 };
+
+// optionalAuthenticate: if a valid token is present it attaches req.user, otherwise continues silently
+exports.optionalAuthenticate = (req, res, next) => {
+  let token = null;
+  const authHeader = req.headers.authorization || req.headers.Authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) token = authHeader.split(' ')[1];
+  else if (req.cookies && req.cookies.token) token = req.cookies.token;
+
+  if (!token) {
+    req.isAuthenticated = false;
+    return next();
+  }
+
+  try {
+    const secret = process.env.JWT_SECRET || 'replace_me_with_strong_secret';
+    const decoded = jwt.verify(token, secret);
+    req.user = decoded;
+    req.isAuthenticated = true;
+    return next();
+  } catch (err) {
+    // invalid token -> treat as unauthenticated but continue
+    req.isAuthenticated = false;
+    return next();
+  }
+};
+
+// rejectIfAuthenticated: disallow requests from valid authenticated users (used for public application submission)
+exports.rejectIfAuthenticated = (req, res, next) => {
+  let token = null;
+  const authHeader = req.headers.authorization || req.headers.Authorization;
+  if (authHeader && authHeader.startsWith('Bearer ')) token = authHeader.split(' ')[1];
+  else if (req.cookies && req.cookies.token) token = req.cookies.token;
+
+  if (!token) return next();
+
+  try {
+    const secret = process.env.JWT_SECRET || 'replace_me_with_strong_secret';
+    const decoded = jwt.verify(token, secret);
+    // valid token -> reject
+    return res.status(403).json({ message: 'Logged-in users cannot submit applications. Please log out to apply.' });
+  } catch (err) {
+    // invalid token -> allow
+    return next();
+  }
+};

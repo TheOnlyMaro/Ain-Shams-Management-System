@@ -3,7 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const express = require('express');
 const cors = require('cors');
-const mongoose = require('mongoose');
+// const mongoose = require('mongoose'); // Legacy: kept for potential rollback
 const dotenv = require('dotenv');
 
 // Load only the root .env
@@ -14,7 +14,9 @@ const courseRoutes = require('./routes/courseRoutes');
 const applicationRoutes = require('./routes/applicationRoutes');
 
 const PORT = process.env.PORT || 4000;
+// Legacy Mongo URI retained for rollback; not used in SQL mode
 const MONGO_URI = process.env.MONGO_URI;
+const SUPABASE_DB_URL = process.env.SUPABASE_DB_URL;
 
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 fs.mkdirSync(UPLOAD_DIR, { recursive: true });
@@ -29,50 +31,19 @@ app.use(cors({
 app.use(express.json());
 app.use('/uploads', express.static(UPLOAD_DIR));
 
-// Track Mongo status and limit retries
-let mongoConnected = false;
-let mongoFailed = false;
-let connectAttempts = 0;
-const MAX_ATTEMPTS = 5;
-
-// Connect to MongoDB with retry and force IPv4 (family: 4)
-const connectWithRetry = () => {
-  if (mongoFailed) return;
-  connectAttempts += 1;
-  console.log(`Attempting MongoDB connection to ${MONGO_URI} (attempt ${connectAttempts}/${MAX_ATTEMPTS}) ...`);
-  mongoose.connect(MONGO_URI, {
-    useNewUrlParser: true,
-    useUnifiedTopology: true,
-    serverSelectionTimeoutMS: 5000,
-    family: 4,
-  })
-    .then(() => {
-      mongoConnected = true;
-      app.set('mongoConnected', true);
-      app.set('mongoFailed', false);
-      console.log('MongoDB connected');
-    })
-    .catch((err) => {
-      mongoConnected = false;
-      app.set('mongoConnected', false);
-      console.error('MongoDB connection error', err.message || err);
-      if (connectAttempts >= MAX_ATTEMPTS) {
-        mongoFailed = true;
-        app.set('mongoFailed', true);
-        console.error(`MongoDB connection failed after ${MAX_ATTEMPTS} attempts. Server will run in in-memory fallback mode. Start MongoDB and restart the server to enable persistence.`);
-      } else {
-        console.log(`Retrying MongoDB connection in 3s...`);
-        setTimeout(connectWithRetry, 3000);
-      }
-    });
-};
-connectWithRetry();
+// SQL Mode: verify Postgres connectivity at startup
+const { pool } = require('./db/sql');
+pool.query('SELECT 1').then(() => {
+  console.log('Connected to Supabase Postgres');
+}).catch((err) => {
+  console.error('Failed to connect to Supabase Postgres', err.message || err);
+});
 
 // Mount routes
 app.use('/api/auth', authRoutes);
 app.use('/api/curriculum', courseRoutes);
-app.use('/api/applications', applicationRoutes);
+app.use('/api/admission', applicationRoutes);
 
 app.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
+  console.log(`Server listening on http://localhost:${PORT} (SQL mode)`);
 });

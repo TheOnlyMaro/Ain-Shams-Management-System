@@ -53,6 +53,12 @@ export const Navbar = () => {
           </Link>
 
           <div className="hidden md:flex space-x-1">
+            <Link
+              to="/admission"
+              className="px-3 py-2 rounded-md text-sm font-medium hover:bg-primary-700 transition"
+            >
+              Admission
+            </Link>
             {isAuthenticated && currentLinks.map((link) => (
               <Link
                 key={link.href}
@@ -99,6 +105,13 @@ export const Navbar = () => {
 
         {isMenuOpen && (
           <div className="md:hidden pb-3 border-t border-primary-700">
+            <Link
+              to="/admission"
+              className="block px-3 py-2 rounded-md text-sm font-medium hover:bg-primary-700 transition"
+              onClick={() => setIsMenuOpen(false)}
+            >
+              Admission
+            </Link>
             {isAuthenticated && (
               <>
                 <div className="px-3 py-2 text-sm font-medium mb-2">{user?.name || 'User'}</div>

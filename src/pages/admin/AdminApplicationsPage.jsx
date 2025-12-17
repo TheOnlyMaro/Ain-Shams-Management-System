@@ -15,6 +15,9 @@ export const AdminApplicationsPage = () => {
   const [applications, setApplications] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
+  // optional staff credentials for manual token testing
+  const [staffId, setStaffId] = useState('');
+  const [staffToken, setStaffToken] = useState('');
 
   // authentication (access token provided by AuthContext)
   const { authToken, user, isAuthenticated } = useAuth();
@@ -33,7 +36,9 @@ export const AdminApplicationsPage = () => {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch(`${API_BASE}/api/applications`);
+      const res = await fetch(`${API_BASE}/api/applications`, {
+        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+      });
       if (!res.ok) throw new Error(`Failed to load (${res.status})`);
       const data = await res.json();
       setApplications(data);
@@ -62,7 +67,9 @@ export const AdminApplicationsPage = () => {
     setLoadingDetails(true);
     setSelectedAppDetails(null);
     try {
-      const res = await fetch(`${API_BASE}/api/applications/${encodeURIComponent(appId)}`);
+      const res = await fetch(`${API_BASE}/api/applications/${encodeURIComponent(appId)}`, {
+        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+      });
       if (!res.ok) {
         const body = await res.json().catch(() => ({}));
         throw new Error(body.message || `Failed to load (${res.status})`);

@@ -1,7 +1,8 @@
 const express = require('express');
 const { body, param } = require('express-validator');
 
-const courseController = require('../controllers/courseController');
+// Switch to SQL-based controller; legacy Mongo controller kept for reference
+const courseController = require('../controllers-sql/courseController');
 const validateRequest = require('../middleware/validateRequest');
 
 const router = express.Router();
@@ -34,19 +35,23 @@ const updateCourseValidators = [
   body('materials.*.fileUrl').optional().isString(),
 ];
 
-router.get('/', courseController.listCourses);
-router.post('/', createCourseValidators, validateRequest, courseController.createCourse);
+// Prefix with /courses to match frontend API paths
+router.get('/courses', courseController.listCourses);
+router.post('/courses', createCourseValidators, validateRequest, courseController.createCourse);
 
-router.get('/:courseId', param('courseId').isMongoId(), validateRequest, courseController.getCourseById);
+router.get('/courses/:courseId', param('courseId').isInt(), validateRequest, courseController.getCourseById);
 
-router.patch('/:courseId', [param('courseId').isMongoId(), ...updateCourseValidators], validateRequest, courseController.updateCourse);
+router.patch('/courses/:courseId', [param('courseId').isInt(), ...updateCourseValidators], validateRequest, courseController.updateCourse);
 
-router.delete('/:courseId', param('courseId').isMongoId(), validateRequest, courseController.deleteCourse);
+router.delete('/courses/:courseId', param('courseId').isInt(), validateRequest, courseController.deleteCourse);
 
-router.get('/:courseId/details', param('courseId').isMongoId(), validateRequest, courseController.getCourseDetails);
+router.get('/courses/:courseId/details', param('courseId').isInt(), validateRequest, courseController.getCourseDetails);
 
-router.post('/:courseId/enroll', [param('courseId').isMongoId(), body('studentId').isMongoId()], validateRequest, courseController.enrollStudent);
+router.post('/courses/:courseId/enroll', [param('courseId').isInt(), body('studentId').isInt()], validateRequest, courseController.enrollStudent);
 
-router.post('/:courseId/unenroll', [param('courseId').isMongoId(), body('studentId').isMongoId()], validateRequest, courseController.unenrollStudent);
+router.post('/courses/:courseId/unenroll', [param('courseId').isInt(), body('studentId').isInt()], validateRequest, courseController.unenrollStudent);
+
+// ============================================================================
+// COURSE METADATA ROUTES (EAV via SQL view) can be added later if required
 
 module.exports = router;
