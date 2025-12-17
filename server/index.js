@@ -37,6 +37,7 @@ app.use('/uploads', express.static(UPLOAD_DIR));
 app.use('/api/auth', authRoutes);
 app.use('/api/curriculum', courseRoutes);
 app.use('/api/applications', applicationRoutes);
+app.get('/', (req, res) => res.send('API running'));
 
 app.listen(PORT, () => {
   console.log(`Server listening on http://localhost:${PORT} (SQL mode)`);
