@@ -20,7 +20,7 @@ export const AdminApplicationsPage = () => {
   const [staffToken, setStaffToken] = useState('');
 
   // authentication (access token provided by AuthContext)
-  const { authToken, user, isAuthenticated } = useAuth();
+  const { authToken, user, isAuthenticated, logout } = useAuth();
 
   const [filterStatus, setFilterStatus] = useState('all');
   const [selectedApp, setSelectedApp] = useState(null);
@@ -36,8 +36,14 @@ export const AdminApplicationsPage = () => {
     setLoading(true);
     setError(null);
     try {
+      // Ensure authToken is available before making the request if authentication is mandatory
+      if (!authToken) {
+        // Handle the case where authToken is missing (e.g., redirect to login)
+        throw new Error("Authentication token is missing. Please log in.");
+      }
+
       const res = await fetch(`${API_BASE}/api/applications`, {
-        headers: authToken ? { Authorization: `Bearer ${authToken}` } : {},
+        headers: { Authorization: `Bearer ${authToken}` }, // authToken is guaranteed to be present here
       });
       if (!res.ok) throw new Error(`Failed to load (${res.status})`);
       const data = await res.json();
@@ -46,6 +52,12 @@ export const AdminApplicationsPage = () => {
       console.error(err);
       setError(String(err.message || err));
       setApplications([]);
+      // Optionally, if the error is a 401 specifically, you might want to log out the user
+      // or redirect them to a login page.
+      if (err.message.includes('401')) {
+        logout();
+        navigate('/login');
+      }
     } finally {
       setLoading(false);
     }
