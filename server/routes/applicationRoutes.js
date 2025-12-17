@@ -3,7 +3,7 @@ const multer = require('multer');
 const path = require('path');
 // Switch to SQL-based controller; legacy Mongo controller kept for reference
 const applicationController = require('../controllers-sql/applicationController');
-const { authenticate, authorizeRole } = require('../middleware/authMiddleware');
+const { authenticate, authorizeRole, optionalAuthenticate, rejectIfAuthenticated } = require('../middleware/authMiddleware');
 
 // Set up Multer for file uploads (same as before)
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
