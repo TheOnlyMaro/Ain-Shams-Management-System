@@ -1,195 +1,161 @@
-import React, { createContext, useState, useCallback } from 'react';
+import React, { createContext, useState, useCallback, useEffect } from 'react';
+import axios from 'axios';
+import { useAuth } from './AuthContext';
 
 export const CurriculumContext = createContext();
 
-const mockCourses = [
-  {
-    id: 'course_1',
-    name: 'Introduction to Computer Science',
-    code: 'CS101',
-    instructor: 'Dr. John Smith',
-    credits: 3,
-    description: 'Fundamentals of computer science and programming',
-    schedule: 'MWF 9:00 AM - 10:30 AM',
-    capacity: 30,
-    enrolled: 28,
-  },
-  {
-    id: 'course_2',
-    name: 'Data Structures and Algorithms',
-    code: 'CS201',
-    instructor: 'Prof. Jane Doe',
-    credits: 4,
-    description: 'Advanced data structures and algorithm design',
-    schedule: 'TuTh 10:00 AM - 11:30 AM',
-    capacity: 25,
-    enrolled: 24,
-  },
-  {
-    id: 'course_3',
-    name: 'Database Systems',
-    code: 'CS301',
-    instructor: 'Dr. Mike Johnson',
-    credits: 3,
-    description: 'Database design and SQL programming',
-    schedule: 'MWF 2:00 PM - 3:30 PM',
-    capacity: 20,
-    enrolled: 18,
-  },
-  {
-    id: 'course_4',
-    name: 'Web Development',
-    code: 'CS250',
-    instructor: 'Sarah Williams',
-    credits: 3,
-    description: 'Full-stack web development with modern frameworks',
-    schedule: 'TuTh 1:00 PM - 2:30 PM',
-    capacity: 35,
-    enrolled: 32,
-  },
-  {
-    id: 'course_5',
-    name: 'Machine Learning Basics',
-    code: 'CS401',
-    instructor: 'Dr. Alex Chen',
-    credits: 4,
-    description: 'Introduction to machine learning algorithms',
-    schedule: 'MWF 11:00 AM - 12:30 PM',
-    capacity: 22,
-    enrolled: 20,
-  },
-];
-
-const mockMaterials = [
-  {
-    id: 'material_1',
-    courseId: 'course_1',
-    courseName: 'Introduction to Computer Science',
-    title: 'Lecture 1: Computer Basics',
-    type: 'pdf',
-    uploadedBy: 'Dr. John Smith',
-    uploadedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    fileSize: '2.5 MB',
-    url: '#',
-  },
-  {
-    id: 'material_2',
-    courseId: 'course_1',
-    courseName: 'Introduction to Computer Science',
-    title: 'Python Tutorial Video',
-    type: 'video',
-    uploadedBy: 'Dr. John Smith',
-    uploadedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    fileSize: '150 MB',
-    url: '#',
-  },
-  {
-    id: 'material_3',
-    courseId: 'course_2',
-    courseName: 'Data Structures and Algorithms',
-    title: 'Assignment 1: Linked Lists',
-    type: 'pdf',
-    uploadedBy: 'Prof. Jane Doe',
-    uploadedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    fileSize: '1.2 MB',
-    url: '#',
-  },
-];
-
-const mockAssignments = [
-  {
-    id: 'assign_1',
-    courseId: 'course_1',
-    courseName: 'Introduction to Computer Science',
-    title: 'Assignment 1: Variables and Data Types',
-    description: 'Write a program to demonstrate understanding of variables and data types',
-    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    totalPoints: 100,
-    submitted: false,
-  },
-  {
-    id: 'assign_2',
-    courseId: 'course_1',
-    courseName: 'Introduction to Computer Science',
-    title: 'Assignment 2: Control Structures',
-    description: 'Write programs using loops and conditionals',
-    dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-    totalPoints: 100,
-    submitted: false,
-  },
-  {
-    id: 'assign_3',
-    courseId: 'course_2',
-    courseName: 'Data Structures and Algorithms',
-    title: 'Project 1: Implement Stack and Queue',
-    description: 'Implement Stack and Queue data structures with all operations',
-    dueDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString(),
-    totalPoints: 150,
-    submitted: false,
-  },
-];
-
-const mockGrades = [
-  {
-    id: 'grade_1',
-    courseId: 'course_1',
-    courseName: 'Introduction to Computer Science',
-    assignmentTitle: 'Assignment 1: Variables and Data Types',
-    points: 95,
-    totalPoints: 100,
-    letterGrade: 'A',
-    gradedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    feedback: 'Excellent work! Well structured code.',
-  },
-  {
-    id: 'grade_2',
-    courseId: 'course_2',
-    courseName: 'Data Structures and Algorithms',
-    assignmentTitle: 'Assignment 1: Linked Lists',
-    points: 88,
-    totalPoints: 100,
-    letterGrade: 'B+',
-    gradedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    feedback: 'Good implementation. Consider optimizing for edge cases.',
-  },
-];
-
 export const CurriculumProvider = ({ children }) => {
-  const [courses, setCourses] = useState(mockCourses);
-  const [materials, setMaterials] = useState(mockMaterials);
-  const [assignments, setAssignments] = useState(mockAssignments);
-  const [grades, setGrades] = useState(mockGrades);
-  const [enrolledCourses, setEnrolledCourses] = useState(['course_1', 'course_2']);
+  const [courses, setCourses] = useState([]);
+  const [materials, setMaterials] = useState([]);
+  const [assignments, setAssignments] = useState([]);
+  const [grades, setGrades] = useState([]);
+  const [enrolledCourses, setEnrolledCourses] = useState([]);
+  const { user, authToken } = useAuth();
+  
+  const apiBase = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000').replace(/\/+$/, '');
+  const API_URL = apiBase.endsWith('/api') ? apiBase : `${apiBase}/api`;
+
+  // Helper for auth headers
+  const getAuthHeaders = useCallback(() => {
+    const token = authToken || (() => {
+      try { return localStorage.getItem('authToken') || null; } catch(e){ return null; }
+    })();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }, [authToken]);
+
+  // Fetch courses on mount
+  const fetchCourses = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_URL}/curriculum/courses`, {
+        headers: getAuthHeaders() 
+      });
+      if (res.data.success) {
+        setCourses(res.data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching courses:', err);
+    }
+  }, [API_URL, getAuthHeaders]);
+
+  // Fetch enrolled courses for students
+  const fetchEnrolledCourses = useCallback(async () => {
+    if (!user || user.role !== 'student') return;
+    try {
+      const res = await axios.get(`${API_URL}/curriculum/courses/enrolled/${user._id}`, {
+         headers: getAuthHeaders()
+      });
+      if (res.data.success) {
+        setEnrolledCourses(res.data.data.map(c => c.id));
+      }
+    } catch (err) {
+      console.error('Error fetching enrolled courses:', err);
+    }
+  }, [API_URL, user, getAuthHeaders]);
+
+  useEffect(() => {
+    fetchCourses();
+  }, [fetchCourses]);
+
+  useEffect(() => {
+    if (user && user.role === 'student') {
+      fetchEnrolledCourses();
+    }
+  }, [user, fetchEnrolledCourses]);
 
   const getCourses = useCallback(() => courses, [courses]);
 
-  const getCourseById = useCallback((id) => {
-    return courses.find((course) => course.id === id);
-  }, [courses]);
+  const getCourseById = useCallback(async (id) => {
+    // Try to find in state first
+    const existing = courses.find((c) => c.id === id);
+    if (existing) return existing;
+    // Fallback to API fetch
+    try {
+       const res = await axios.get(`${API_URL}/curriculum/courses/${id}`, {
+          headers: getAuthHeaders()
+       });
+       return res.data.success ? res.data.data : null;
+    } catch (err) {
+       console.error('Error fetching course by id:', err);
+       return null;
+    }
+  }, [courses, API_URL, getAuthHeaders]);
 
-  const createCourse = useCallback((courseData) => {
-    const newCourse = {
-      id: 'course_' + Date.now(),
-      ...courseData,
-      enrolled: 0,
-    };
-    setCourses((prev) => [...prev, newCourse]);
-    return newCourse;
-  }, []);
+  const createCourse = useCallback(async (courseData) => {
+    try {
+      const res = await axios.post(`${API_URL}/curriculum/courses`, courseData, {
+        headers: getAuthHeaders()
+      });
+      if (res.data.success) {
+        const newCourse = res.data.data;
+        setCourses((prev) => [newCourse, ...prev]);
+        return newCourse;
+      }
+    } catch (err) {
+      console.error('Error creating course:', err);
+      throw err;
+    }
+  }, [API_URL, getAuthHeaders]);
 
-  const updateCourse = useCallback((id, courseData) => {
-    setCourses((prev) =>
-      prev.map((course) => (course.id === id ? { ...course, ...courseData } : course))
-    );
-  }, []);
+  const updateCourse = useCallback(async (id, courseData) => {
+    try {
+      const res = await axios.patch(`${API_URL}/curriculum/courses/${id}`, courseData, {
+        headers: getAuthHeaders()
+      });
+      if (res.data.success) {
+         setCourses((prev) =>
+          prev.map((course) => (course.id === id ? res.data.data : course))
+        );
+      }
+    } catch (err) {
+      console.error('Error updating course:', err);
+      throw err;
+    }
+  }, [API_URL, getAuthHeaders]);
 
-  const deleteCourse = useCallback((id) => {
-    setCourses((prev) => prev.filter((course) => course.id !== id));
-  }, []);
+  const deleteCourse = useCallback(async (id) => {
+    try {
+      await axios.delete(`${API_URL}/curriculum/courses/${id}`, {
+        headers: getAuthHeaders()
+      });
+      setCourses((prev) => prev.filter((course) => course.id !== id));
+    } catch (err) {
+       console.error('Error deleting course:', err);
+       throw err;
+    }
+  }, [API_URL, getAuthHeaders]);
 
-  const enrollCourse = useCallback((courseId) => {
-    setEnrolledCourses((prev) => [...new Set([...prev, courseId])]);
-  }, []);
+  const enrollCourse = useCallback(async (courseId) => {
+    if (!user) return;
+    try {
+       await axios.post(`${API_URL}/curriculum/courses/${courseId}/enroll`, { studentId: user._id }, {
+         headers: getAuthHeaders()
+       });
+       setEnrolledCourses((prev) => [...new Set([...prev, courseId])]);
+       // Refresh course list to update enrolled count if needed
+       fetchCourses();
+    } catch (err) {
+       console.error('Error enrolling in course:', err);
+       throw err;
+    }
+  }, [API_URL, user, getAuthHeaders, fetchCourses]);
+
+  const unenrollCourse = useCallback(async (courseId) => {
+    if (!user) return;
+    try {
+       await axios.post(`${API_URL}/curriculum/courses/${courseId}/unenroll`, { studentId: user._id }, {
+         headers: getAuthHeaders()
+       });
+       setEnrolledCourses((prev) => prev.filter(id => id !== courseId));
+       fetchCourses();
+    } catch (err) {
+       console.error('Error unenrolling from course:', err);
+       throw err;
+    }
+  }, [API_URL, user, getAuthHeaders, fetchCourses]);
+
+  // TODO: Implement Material/Assignment/Grade API calls similar to above
+  // For now, keeping mock data or basic state for these to prevent breakage
+  // while we focus on Course connectivity.
 
   const getMaterials = useCallback(() => materials, [materials]);
 
@@ -262,6 +228,7 @@ export const CurriculumProvider = ({ children }) => {
     updateCourse,
     deleteCourse,
     enrollCourse,
+    unenrollCourse, // Added unenroll
     getMaterials,
     getMaterialsByCourse,
     uploadMaterial,

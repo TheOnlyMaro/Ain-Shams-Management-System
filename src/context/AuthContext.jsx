@@ -29,25 +29,20 @@ export const AuthProvider = ({ children }) => {
         if (!cancelled) {
           const online = (body.mode === 'sql') || !!body.mongoConnected;
           setBackendOnline(online);
-          // when backend is online, stop using localStorage for token persistence
-          setUseLocalStorage(!online);
-          if (!online) {
-            // backend offline: load persisted token if present
-            try {
-              const stored = localStorage.getItem('authToken');
-              if (stored) {
-                setAuthToken(stored);
-                setUser(JSON.parse(localStorage.getItem('user') || 'null'));
-                setUserRole(localStorage.getItem('userRole') || null);
-                setIsAuthenticated(!!stored);
-                setTokenInStore(stored);
-              }
-            } catch (e) {}
-          } else {
-            // backend online: prefer in-memory token (clear any stale local persist)
-            setTokenInStore(null);
-            try { localStorage.removeItem('authToken'); localStorage.removeItem('user'); localStorage.removeItem('userRole'); } catch(e){}
-          }
+          setUseLocalStorage(true); // Always use local storage for token persistence
+          
+          // Always try to restore session from local storage
+          try {
+            const stored = localStorage.getItem('authToken');
+            if (stored) {
+              setAuthToken(stored);
+              setUser(JSON.parse(localStorage.getItem('user') || 'null'));
+              setUserRole(localStorage.getItem('userRole') || null);
+              setIsAuthenticated(!!stored);
+              setTokenInStore(stored);
+            }
+          } catch (e) {}
+
           console.log('AuthContext: backendOnline set to', online);
         }
       } catch (err) {
@@ -93,15 +88,19 @@ export const AuthProvider = ({ children }) => {
         setUserRole(userData.role);
         setIsAuthenticated(true);
         setAuthToken(token);
-        // set token in tokenStore (in-memory if backendOnline)
+        // set token in tokenStore
         setTokenInStore(token);
-        if (!backendOnline) {
-          try {
-            localStorage.setItem('user', JSON.stringify(userData));
-            localStorage.setItem('userRole', userData.role);
-            localStorage.setItem('authToken', token);
-          } catch(e){}
+        
+        // Always persist to localStorage
+        try {
+          localStorage.setItem('user', JSON.stringify(userData));
+          localStorage.setItem('userRole', userData.role);
+          localStorage.setItem('authToken', token);
+          if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
+        } catch (e) {
+          console.error('Failed to save to localStorage', e);
         }
+
         return userData;
       }
 
@@ -160,6 +159,17 @@ export const AuthProvider = ({ children }) => {
         setIsAuthenticated(true);
         setAuthToken(token);
         setTokenInStore(token);
+        
+        // Persist to localStorage
+        try {
+          localStorage.setItem('user', JSON.stringify(userObj));
+          localStorage.setItem('userRole', userObj.role);
+          localStorage.setItem('authToken', token);
+          if (refreshToken) localStorage.setItem('refreshToken', refreshToken);
+        } catch (e) {
+          console.error('Failed to save to localStorage', e);
+        }
+        
         return userObj;
       }
 

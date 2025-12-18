@@ -30,23 +30,30 @@ export const AdminCoursesPage = () => {
     setEditingCourse(null);
   };
 
-  const handleSaveCourse = (e) => {
+  const handleSaveCourse = async (e) => {
     e.preventDefault();
-    if (editingCourse) {
-      updateCourse(editingCourse.id, {
-        ...formData,
-        credits: parseInt(formData.credits),
-        capacity: parseInt(formData.capacity),
-      });
-    } else {
-      createCourse({
-        ...formData,
-        credits: parseInt(formData.credits),
-        capacity: parseInt(formData.capacity),
-      });
+    try {
+      if (editingCourse) {
+        await updateCourse(editingCourse.id, {
+          ...formData,
+          instructorName: formData.instructor,
+          credits: parseInt(formData.credits),
+          capacity: parseInt(formData.capacity),
+        });
+      } else {
+        await createCourse({
+          ...formData,
+          instructorName: formData.instructor,
+          credits: parseInt(formData.credits),
+          capacity: parseInt(formData.capacity),
+        });
+      }
+      setShowNewCourseModal(false);
+      handleResetForm();
+    } catch (error) {
+      console.error('Failed to save course:', error);
+      alert('Failed to save course. Please check the inputs and try again.');
     }
-    setShowNewCourseModal(false);
-    handleResetForm();
   };
 
   const handleEditCourse = (course) => {
