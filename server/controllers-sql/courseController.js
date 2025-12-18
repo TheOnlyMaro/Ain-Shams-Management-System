@@ -81,17 +81,91 @@ exports.updateCourse = async (req, res, next) => {
     ensureRole(req, 'admin');
     const errors = validationResult(req);
     if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
+    
     const id = Number(req.params.courseId);
-    const c = mapCourseApiToSql(req.body || {});
-    const upd = await db.query(
-      `UPDATE courses SET code=$1, name=$2, description=$3, instructor_name=$4, instructor_email=$5,
-        schedule=$6, location=$7, credits=$8, capacity=$9, enrolled=$10, status=$11,
-        department=$12, level=$13, semester=$14, updated_at=CURRENT_TIMESTAMP
-       WHERE id=$15 RETURNING *`,
-      [c.code, c.name, c.description, c.instructor_name, c.instructor_email, c.schedule, c.location, c.credits, c.capacity, c.enrolled, c.status, c.department, c.level, c.semester, id]
-    );
-    if (!upd.rowCount) return res.status(404).json({ success: false, message: 'Course not found' });
-    res.json({ success: true, data: mapCourseRowToApi(upd.rows[0]) });
+    
+    // Fetch existing course to check existence
+    const existing = await db.query('SELECT * FROM courses WHERE id=$1', [id]);
+    if (!existing.rowCount) return res.status(404).json({ success: false, message: 'Course not found' });
+    
+    // Prepare dynamic update
+    const updates = [];
+    const values = [];
+    let idx = 1;
+    
+    const mappings = {
+      code: 'code',
+      name: 'name',
+      description: 'description',
+      instructorName: 'instructor_name', // Handle both aliases
+      instructor: 'instructor_name',
+      instructorEmail: 'instructor_email',
+      schedule: 'schedule',
+      location: 'location',
+      credits: 'credits',
+      capacity: 'capacity',
+      enrolled: 'enrolled',
+      status: 'status',
+      'metadata.department': 'department',
+      'metadata.level': 'level',
+      'metadata.semester': 'semester'
+    };
+
+    const body = req.body || {};
+    
+    // Helper to get nested value
+    const getValue = (obj, path) => path.split('.').reduce((o, k) => (o || {})[k], obj);
+
+    Object.keys(mappings).forEach(key => {
+      const val = getValue(body, key);
+      if (val !== undefined) {
+        updates.push(`${mappings[key]}=$${idx++}`);
+        values.push(val);
+      }
+    });
+
+    if (updates.length === 0) {
+      // No updates provided, just return existing
+      const q = await db.query(`${baseCourseSelect} WHERE c.id=$1 GROUP BY c.id`, [id]);
+      return res.json({ success: true, data: mapCourseRowToApi(q.rows[0]) });
+    }
+
+    values.push(id);
+    const sql = `UPDATE courses SET ${updates.join(', ')}, updated_at=CURRENT_TIMESTAMP WHERE id=$${idx} RETURNING *`;
+    
+    const upd = await db.query(sql, values);
+    
+    // Return full object with joins
+    const q = await db.query(`${baseCourseSelect} WHERE c.id=$1 GROUP BY c.id`, [id]);
+    res.json({ success: true, data: mapCourseRowToApi(q.rows[0]) });
+  } catch (err) { next(err); }
+};
+
+exports.getEnrolledCourses = async (req, res, next) => {
+  try {
+    const studentId = Number(req.params.studentId);
+    if (!Number.isInteger(studentId)) return res.status(400).json({ success: false, message: 'Invalid student id' });
+    
+    // Check if requester is authorized to view these courses (admin or the student themselves)
+    const requesterRole = getRequestRole(req);
+    const requesterId = req.user ? (req.user.id || req.user._id) : null;
+    
+    // Allow admin or the student themselves
+    if (requesterRole !== 'admin') {
+       // If we have req.user, check ID. If not authenticated, fail (handled by middleware usually, but check here too)
+       if (!req.user) return res.status(401).json({ success: false, message: 'Unauthorized' });
+       if (Number(requesterId) !== studentId) return res.status(403).json({ success: false, message: 'Forbidden' });
+    }
+
+    const sql = `${baseCourseSelect} 
+                 INNER JOIN course_enrollments ce_filter ON ce_filter.course_id = c.id 
+                 WHERE ce_filter.student_id = $1 
+                 GROUP BY c.id 
+                 ORDER BY c.created_at DESC`;
+                 
+    const q = await db.query(sql, [studentId]);
+    const data = q.rows.map(mapCourseRowToApi);
+    res.json({ success: true, data });
   } catch (err) { next(err); }
 };
 

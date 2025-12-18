@@ -74,7 +74,7 @@ exports.mapCourseApiToSql = (body) => ({
   code: body.code,
   name: body.name,
   description: body.description || '',
-  instructor_name: body.instructor || '',
+  instructor_name: body.instructor || body.instructorName || '',
   instructor_email: body.instructorEmail || '',
   schedule: body.schedule || '',
   location: body.location || 'TBD',
