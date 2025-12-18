@@ -1,5 +1,6 @@
 const express = require('express');
 const { body, param } = require('express-validator');
+const { authenticate, authorizeRole, optionalAuthenticate } = require('../middleware/authMiddleware');
 
 // Switch to SQL-based controller; legacy Mongo controller kept for reference
 const courseController = require('../controllers-sql/courseController');
@@ -36,20 +37,22 @@ const updateCourseValidators = [
 ];
 
 // Prefix with /courses to match frontend API paths
-router.get('/courses', courseController.listCourses);
-router.post('/courses', createCourseValidators, validateRequest, courseController.createCourse);
+router.get('/courses', optionalAuthenticate, courseController.listCourses);
+router.post('/courses', authenticate, authorizeRole('admin'), createCourseValidators, validateRequest, courseController.createCourse);
 
-router.get('/courses/:courseId', param('courseId').isInt(), validateRequest, courseController.getCourseById);
+router.get('/courses/:courseId', optionalAuthenticate, param('courseId').isInt(), validateRequest, courseController.getCourseById);
 
-router.patch('/courses/:courseId', [param('courseId').isInt(), ...updateCourseValidators], validateRequest, courseController.updateCourse);
+router.patch('/courses/:courseId', authenticate, authorizeRole('admin'), [param('courseId').isInt(), ...updateCourseValidators], validateRequest, courseController.updateCourse);
 
-router.delete('/courses/:courseId', param('courseId').isInt(), validateRequest, courseController.deleteCourse);
+router.delete('/courses/:courseId', authenticate, authorizeRole('admin'), param('courseId').isInt(), validateRequest, courseController.deleteCourse);
 
-router.get('/courses/:courseId/details', param('courseId').isInt(), validateRequest, courseController.getCourseDetails);
+router.get('/courses/:courseId/details', authenticate, param('courseId').isInt(), validateRequest, courseController.getCourseDetails);
 
-router.post('/courses/:courseId/enroll', [param('courseId').isInt(), body('studentId').isInt()], validateRequest, courseController.enrollStudent);
+router.post('/courses/:courseId/enroll', authenticate, authorizeRole('student'), [param('courseId').isInt(), body('studentId').isInt()], validateRequest, courseController.enrollStudent);
 
-router.post('/courses/:courseId/unenroll', [param('courseId').isInt(), body('studentId').isInt()], validateRequest, courseController.unenrollStudent);
+router.post('/courses/:courseId/unenroll', authenticate, authorizeRole('student'), [param('courseId').isInt(), body('studentId').isInt()], validateRequest, courseController.unenrollStudent);
+
+router.get('/courses/enrolled/:studentId', authenticate, param('studentId').isInt(), validateRequest, courseController.getEnrolledCourses);
 
 // ============================================================================
 // COURSE METADATA ROUTES (EAV via SQL view) can be added later if required
