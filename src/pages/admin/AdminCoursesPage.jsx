@@ -33,26 +33,31 @@ export const AdminCoursesPage = () => {
   const handleSaveCourse = async (e) => {
     e.preventDefault();
     try {
+      const courseData = {
+        code: formData.code.trim(),
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        instructorName: formData.instructor.trim(),
+        schedule: formData.schedule.trim(),
+        credits: parseInt(formData.credits),
+        capacity: parseInt(formData.capacity),
+      };
+
       if (editingCourse) {
-        await updateCourse(editingCourse.id, {
-          ...formData,
-          instructorName: formData.instructor,
-          credits: parseInt(formData.credits),
-          capacity: parseInt(formData.capacity),
-        });
+        // Ensure course ID is a number
+        const courseId = typeof editingCourse.id === 'string' ? parseInt(editingCourse.id) : editingCourse.id;
+        await updateCourse(courseId, courseData);
       } else {
-        await createCourse({
-          ...formData,
-          instructorName: formData.instructor,
-          credits: parseInt(formData.credits),
-          capacity: parseInt(formData.capacity),
-        });
+        await createCourse(courseData);
       }
       setShowNewCourseModal(false);
       handleResetForm();
     } catch (error) {
       console.error('Failed to save course:', error);
-      alert('Failed to save course. Please check the inputs and try again.');
+      const errorMessage = error.response?.data?.errors 
+        ? error.response.data.errors.map(e => e.msg || e.message).join(', ')
+        : error.response?.data?.message || error.message || 'Failed to save course. Please check the inputs and try again.';
+      alert(errorMessage);
     }
   };
 

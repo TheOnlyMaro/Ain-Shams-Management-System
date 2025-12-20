@@ -98,12 +98,18 @@ export const CurriculumProvider = ({ children }) => {
 
   const updateCourse = useCallback(async (id, courseData) => {
     try {
-      const res = await axios.patch(`${API_URL}/curriculum/courses/${id}`, courseData, {
+      // Ensure ID is a number for the API call
+      const courseId = typeof id === 'string' ? parseInt(id) : id;
+      const res = await axios.patch(`${API_URL}/curriculum/courses/${courseId}`, courseData, {
         headers: getAuthHeaders()
       });
       if (res.data.success) {
          setCourses((prev) =>
-          prev.map((course) => (course.id === id ? res.data.data : course))
+          prev.map((course) => {
+            // Handle both string and number ID comparisons
+            const courseIdNum = typeof course.id === 'string' ? parseInt(course.id) : course.id;
+            return courseIdNum === courseId ? res.data.data : course;
+          })
         );
       }
     } catch (err) {
@@ -154,8 +160,7 @@ export const CurriculumProvider = ({ children }) => {
   }, [API_URL, user, getAuthHeaders, fetchCourses]);
 
   // TODO: Implement Material/Assignment/Grade API calls similar to above
-  // For now, keeping mock data or basic state for these to prevent breakage
-  // while we focus on Course connectivity.
+  // State is initialized as empty arrays and will be populated via API calls.
 
   const getMaterials = useCallback(() => materials, [materials]);
 

@@ -2,58 +2,8 @@ import React, { createContext, useState, useCallback } from 'react';
 
 export const AdmissionContext = createContext();
 
-const mockApplications = [
-  {
-    id: 'app_1',
-    studentId: 'student_1',
-    studentName: 'Alice Johnson',
-    email: 'alice@university.edu',
-    phoneNumber: '+1234567890',
-    appliedProgram: 'Bachelor of Science in Computer Science',
-    applicationStatus: 'pending',
-    submittedAt: new Date(Date.now() - 10 * 24 * 60 * 60 * 1000).toISOString(),
-    gpa: 3.8,
-    testScore: 1450,
-    documents: [
-      { id: 'doc_1', name: 'Transcript.pdf', type: 'transcript', uploadedAt: new Date().toISOString() },
-      { id: 'doc_2', name: 'Essays.pdf', type: 'essay', uploadedAt: new Date().toISOString() },
-    ],
-  },
-  {
-    id: 'app_2',
-    studentId: 'student_2',
-    studentName: 'Bob Smith',
-    email: 'bob@university.edu',
-    phoneNumber: '+1234567891',
-    appliedProgram: 'Bachelor of Science in Business Administration',
-    applicationStatus: 'approved',
-    submittedAt: new Date(Date.now() - 20 * 24 * 60 * 60 * 1000).toISOString(),
-    gpa: 3.6,
-    testScore: 1380,
-    documents: [
-      { id: 'doc_3', name: 'Transcript.pdf', type: 'transcript', uploadedAt: new Date().toISOString() },
-    ],
-    approvedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-  },
-  {
-    id: 'app_3',
-    studentId: 'student_3',
-    studentName: 'Carol Davis',
-    email: 'carol@university.edu',
-    phoneNumber: '+1234567892',
-    appliedProgram: 'Master of Engineering',
-    applicationStatus: 'rejected',
-    submittedAt: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-    gpa: 3.2,
-    testScore: 1200,
-    documents: [],
-    rejectedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    rejectionReason: 'GPA below minimum requirement',
-  },
-];
-
 export const AdmissionProvider = ({ children }) => {
-  const [applications, setApplications] = useState(mockApplications);
+  const [applications, setApplications] = useState([]);
 
   const getApplications = useCallback(() => applications, [applications]);
 

@@ -23,13 +23,13 @@ const createCourseValidators = [
 ];
 
 const updateCourseValidators = [
-  body('code').optional().isString().trim(),
-  body('name').optional().isString().trim(),
+  body('code').optional({ checkFalsy: true }).isString().trim().notEmpty(),
+  body('name').optional({ checkFalsy: true }).isString().trim().notEmpty(),
   body('description').optional().isString().trim(),
-  body('instructorName').optional().isString().trim(),
-  body('schedule').optional().isString().trim(),
-  body('credits').optional().isInt({ min: 1, max: 6 }),
-  body('capacity').optional().isInt({ min: 1 }),
+  body('instructorName').optional({ checkFalsy: true }).isString().trim().notEmpty(),
+  body('schedule').optional({ checkFalsy: true }).isString().trim().notEmpty(),
+  body('credits').optional({ checkFalsy: true }).isInt({ min: 1, max: 6 }),
+  body('capacity').optional({ checkFalsy: true }).isInt({ min: 1 }),
   body('status').optional().isIn(['draft', 'published', 'archived']),
   body('materials').optional().isArray(),
   body('materials.*.title').optional().isString(),
