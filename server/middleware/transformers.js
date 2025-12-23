@@ -86,3 +86,30 @@ exports.mapCourseApiToSql = (body) => ({
   level: body.metadata?.level || '',
   semester: body.metadata?.semester || '',
 });
+
+exports.mapGradeRowToApi = (row) => {
+  if (!row) return null;
+  return {
+    id: row.id,
+    _id: toLegacyId(row.id),
+    courseId: row.course_id,
+    assignmentId: row.assignment_id,
+    studentId: row.student_id,
+    studentName: row.student_name || '',
+    studentEmail: row.student_email || '',
+    points: Number(row.points) || 0,
+    feedback: row.feedback || '',
+    assignmentTitle: row.assignment_title || '',
+    assignmentTotalPoints: Number(row.assignment_total_points) || 0,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+  };
+};
+
+exports.mapGradeApiToSql = (body) => ({
+  course_id: Number(body.courseId || body.course_id || body.course) || null,
+  assignment_id: Number(body.assignmentId || body.assignment_id || body.assignment) || null,
+  student_id: Number(body.studentId || body.student_id || body.student) || null,
+  points: Number(body.points) || 0,
+  feedback: body.feedback || '',
+});

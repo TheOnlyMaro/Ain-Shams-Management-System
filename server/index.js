@@ -12,6 +12,7 @@ dotenv.config({ path: path.join(__dirname, '..', '.env') });
 const authRoutes = require('./routes/authRoutes');
 const courseRoutes = require('./routes/courseRoutes');
 const assignmentRoutes = require('./routes/assignmentRoutes');
+const gradeRoutes = require('./routes/gradeRoutes');
 const applicationRoutes = require('./routes/applicationRoutes');
 
 const PORT = process.env.PORT || 4000;
@@ -38,6 +39,7 @@ app.use('/uploads', express.static(UPLOAD_DIR));
 app.use('/api/auth', authRoutes);
 app.use('/api/curriculum', courseRoutes);
 app.use('/api/curriculum', assignmentRoutes);
+app.use('/api/curriculum', gradeRoutes);
 app.use('/api/applications', applicationRoutes);
 app.get('/', (req, res) => res.send('API running'));
 
