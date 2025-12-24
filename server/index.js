@@ -12,6 +12,7 @@ dotenv.config({ path: path.join(__dirname, '..', '.env') });
 const authRoutes = require('./routes/authRoutes');
 const courseRoutes = require('./routes/courseRoutes');
 const applicationRoutes = require('./routes/applicationRoutes');
+const eventsRoutes = require('./routes/eventsRoutes');
 
 const PORT = process.env.PORT || 4000;
 // Legacy Mongo URI retained for rollback; not used in SQL mode
@@ -37,6 +38,7 @@ app.use('/uploads', express.static(UPLOAD_DIR));
 app.use('/api/auth', authRoutes);
 app.use('/api/curriculum', courseRoutes);
 app.use('/api/applications', applicationRoutes);
+app.use('/api/events', eventsRoutes);
 app.get('/', (req, res) => res.send('API running'));
 
 app.listen(PORT, () => {

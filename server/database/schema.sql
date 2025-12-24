@@ -203,6 +203,32 @@ CREATE TABLE application_notifications (
 CREATE INDEX idx_application_notifications_application_id ON application_notifications(application_id);
 
 -- ============================================================================
+-- EVENTS AND ANNOUNCEMENTS
+-- ============================================================================
+-- Centralized hub for university-wide announcements, events, and deadlines
+
+CREATE TABLE events (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  event_date TIMESTAMP NOT NULL,
+  location VARCHAR(255) NOT NULL DEFAULT '',
+  event_type VARCHAR(50) NOT NULL DEFAULT 'event' 
+    CHECK (event_type IN ('announcement', 'event', 'deadline', 'holiday', 'other')),
+  status VARCHAR(50) NOT NULL DEFAULT 'published' 
+    CHECK (status IN ('draft', 'published', 'archived')),
+  created_by_user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_events_event_date ON events(event_date);
+CREATE INDEX idx_events_event_type ON events(event_type);
+CREATE INDEX idx_events_status ON events(status);
+CREATE INDEX idx_events_created_by ON events(created_by_user_id);
+CREATE INDEX idx_events_published ON events(status, event_date) WHERE status = 'published';
+
+-- ============================================================================
 -- EAV SUBSYSTEM (Typed, Minimal)
 -- ============================================================================
 -- Used for: staffType (admissions/other), user preferences, LMS metadata
@@ -281,7 +307,7 @@ WHERE v.entity_type = 'course';
 -- ============================================================================
 -- SUMMARY
 -- ============================================================================
--- 16 tables total
+-- 17 tables total
 -- All fields NOT NULL with sensible defaults
 -- Single role per user (role_id in users table)
 -- staffType moved to EAV (entity_type='user', attribute_name='staffType')
