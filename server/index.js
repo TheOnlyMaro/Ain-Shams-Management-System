@@ -11,6 +11,7 @@ dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 const authRoutes = require('./routes/authRoutes');
 const courseRoutes = require('./routes/courseRoutes');
+const classroomRoutes = require('./routes/classroomRoutes');
 const applicationRoutes = require('./routes/applicationRoutes');
 
 const PORT = process.env.PORT || 4000;
@@ -36,6 +37,7 @@ app.use('/uploads', express.static(UPLOAD_DIR));
 // Mount routes
 app.use('/api/auth', authRoutes);
 app.use('/api/curriculum', courseRoutes);
+app.use('/api/classrooms', classroomRoutes);
 app.use('/api/applications', applicationRoutes);
 app.get('/', (req, res) => res.send('API running'));
 
