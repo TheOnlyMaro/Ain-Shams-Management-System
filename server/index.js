@@ -13,6 +13,7 @@ const authRoutes = require('./routes/authRoutes');
 const courseRoutes = require('./routes/courseRoutes');
 const classroomRoutes = require('./routes/classroomRoutes');
 const applicationRoutes = require('./routes/applicationRoutes');
+const maintenanceRoutes = require('./routes/maintenanceRoutes');
 
 const PORT = process.env.PORT || 4000;
 // Legacy Mongo URI retained for rollback; not used in SQL mode
@@ -39,6 +40,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/curriculum', courseRoutes);
 app.use('/api/classrooms', classroomRoutes);
 app.use('/api/applications', applicationRoutes);
+app.use('/api', maintenanceRoutes);
 app.get('/', (req, res) => res.send('API running'));
 
 app.listen(PORT, () => {
