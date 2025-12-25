@@ -4,30 +4,74 @@ import { useAuth } from './AuthContext';
 
 export const CurriculumContext = createContext();
 
+const STORAGE_PREFIX = 'asms.curriculum.v1';
+
+const readJson = (key, fallback) => {
+  try {
+    const raw = localStorage.getItem(`${STORAGE_PREFIX}:${key}`);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+};
+
+const writeJson = (key, value) => {
+  try {
+    localStorage.setItem(`${STORAGE_PREFIX}:${key}`, JSON.stringify(value));
+  } catch {
+    // ignore
+  }
+};
+
+const computeLetterGrade = (points, totalPoints) => {
+  const pct = totalPoints ? (points / totalPoints) * 100 : 0;
+  if (pct >= 97) return 'A+';
+  if (pct >= 93) return 'A';
+  if (pct >= 90) return 'A-';
+  if (pct >= 87) return 'B+';
+  if (pct >= 83) return 'B';
+  if (pct >= 80) return 'B-';
+  if (pct >= 77) return 'C+';
+  if (pct >= 73) return 'C';
+  if (pct >= 70) return 'C-';
+  if (pct >= 60) return 'D';
+  return 'F';
+};
+
 export const CurriculumProvider = ({ children }) => {
   const [courses, setCourses] = useState([]);
-  const [materials, setMaterials] = useState([]);
-  const [assignments, setAssignments] = useState([]);
-  const [grades, setGrades] = useState([]);
-  const [enrolledCourses, setEnrolledCourses] = useState([]);
+  const [materials, setMaterials] = useState(() => readJson('materials', []));
+  const [assignments, setAssignments] = useState(() => readJson('assignments', []));
+  const [grades, setGrades] = useState(() => readJson('grades', []));
+  const [enrolledCourses, setEnrolledCourses] = useState(() => readJson('enrolledCourses', []));
+
   const { user, authToken } = useAuth();
-  
+
   const apiBase = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000').replace(/\/+$/, '');
   const API_URL = apiBase.endsWith('/api') ? apiBase : `${apiBase}/api`;
 
-  // Helper for auth headers
+  useEffect(() => writeJson('materials', materials), [materials]);
+  useEffect(() => writeJson('assignments', assignments), [assignments]);
+  useEffect(() => writeJson('grades', grades), [grades]);
+  useEffect(() => writeJson('enrolledCourses', enrolledCourses), [enrolledCourses]);
+
   const getAuthHeaders = useCallback(() => {
-    const token = authToken || (() => {
-      try { return localStorage.getItem('authToken') || null; } catch(e){ return null; }
-    })();
+    const token =
+      authToken ||
+      (() => {
+        try {
+          return localStorage.getItem('authToken') || null;
+        } catch {
+          return null;
+        }
+      })();
     return token ? { Authorization: `Bearer ${token}` } : {};
   }, [authToken]);
 
-  // Fetch courses on mount
   const fetchCourses = useCallback(async () => {
     try {
       const res = await axios.get(`${API_URL}/curriculum/courses`, {
-        headers: getAuthHeaders() 
+        headers: getAuthHeaders(),
       });
       if (res.data.success) {
         setCourses(res.data.data);
@@ -37,15 +81,14 @@ export const CurriculumProvider = ({ children }) => {
     }
   }, [API_URL, getAuthHeaders]);
 
-  // Fetch enrolled courses for students
   const fetchEnrolledCourses = useCallback(async () => {
     if (!user || user.role !== 'student') return;
     try {
       const res = await axios.get(`${API_URL}/curriculum/courses/enrolled/${user._id}`, {
-         headers: getAuthHeaders()
+        headers: getAuthHeaders(),
       });
       if (res.data.success) {
-        setEnrolledCourses(res.data.data.map(c => c.id));
+        setEnrolledCourses(res.data.data.map((c) => c.id));
       }
     } catch (err) {
       console.error('Error fetching enrolled courses:', err);
@@ -64,145 +107,169 @@ export const CurriculumProvider = ({ children }) => {
 
   const getCourses = useCallback(() => courses, [courses]);
 
-  const getCourseById = useCallback(async (id) => {
-    // Try to find in state first
-    const existing = courses.find((c) => c.id === id);
-    if (existing) return existing;
-    // Fallback to API fetch
-    try {
-       const res = await axios.get(`${API_URL}/curriculum/courses/${id}`, {
-          headers: getAuthHeaders()
-       });
-       return res.data.success ? res.data.data : null;
-    } catch (err) {
-       console.error('Error fetching course by id:', err);
-       return null;
-    }
-  }, [courses, API_URL, getAuthHeaders]);
+  const getCourseById = useCallback(
+    (id) => courses.find((c) => String(c.id) === String(id)) || null,
+    [courses]
+  );
 
-  const createCourse = useCallback(async (courseData) => {
-    try {
+  const createCourse = useCallback(
+    async (courseData) => {
       const res = await axios.post(`${API_URL}/curriculum/courses`, courseData, {
-        headers: getAuthHeaders()
+        headers: getAuthHeaders(),
       });
       if (res.data.success) {
         const newCourse = res.data.data;
         setCourses((prev) => [newCourse, ...prev]);
         return newCourse;
       }
-    } catch (err) {
-      console.error('Error creating course:', err);
-      throw err;
-    }
-  }, [API_URL, getAuthHeaders]);
+      throw new Error('Failed to create course');
+    },
+    [API_URL, getAuthHeaders]
+  );
 
-  const updateCourse = useCallback(async (id, courseData) => {
-    try {
-      // Ensure ID is a number for the API call
-      const courseId = typeof id === 'string' ? parseInt(id) : id;
+  const updateCourse = useCallback(
+    async (id, courseData) => {
+      const courseId = typeof id === 'string' ? parseInt(id, 10) : id;
       const res = await axios.patch(`${API_URL}/curriculum/courses/${courseId}`, courseData, {
-        headers: getAuthHeaders()
+        headers: getAuthHeaders(),
       });
       if (res.data.success) {
-         setCourses((prev) =>
+        setCourses((prev) =>
           prev.map((course) => {
-            // Handle both string and number ID comparisons
-            const courseIdNum = typeof course.id === 'string' ? parseInt(course.id) : course.id;
+            const courseIdNum = typeof course.id === 'string' ? parseInt(course.id, 10) : course.id;
             return courseIdNum === courseId ? res.data.data : course;
           })
         );
+        return res.data.data;
       }
-    } catch (err) {
-      console.error('Error updating course:', err);
-      throw err;
-    }
-  }, [API_URL, getAuthHeaders]);
+      throw new Error('Failed to update course');
+    },
+    [API_URL, getAuthHeaders]
+  );
 
-  const deleteCourse = useCallback(async (id) => {
-    try {
+  const deleteCourse = useCallback(
+    async (id) => {
       await axios.delete(`${API_URL}/curriculum/courses/${id}`, {
-        headers: getAuthHeaders()
+        headers: getAuthHeaders(),
       });
-      setCourses((prev) => prev.filter((course) => course.id !== id));
-    } catch (err) {
-       console.error('Error deleting course:', err);
-       throw err;
-    }
-  }, [API_URL, getAuthHeaders]);
+      setCourses((prev) => prev.filter((course) => String(course.id) !== String(id)));
+    },
+    [API_URL, getAuthHeaders]
+  );
 
-  const enrollCourse = useCallback(async (courseId) => {
-    if (!user) return;
-    try {
-       await axios.post(`${API_URL}/curriculum/courses/${courseId}/enroll`, { studentId: user._id }, {
-         headers: getAuthHeaders()
-       });
-       setEnrolledCourses((prev) => [...new Set([...prev, courseId])]);
-       // Refresh course list to update enrolled count if needed
-       fetchCourses();
-    } catch (err) {
-       console.error('Error enrolling in course:', err);
-       throw err;
-    }
-  }, [API_URL, user, getAuthHeaders, fetchCourses]);
+  const enrollCourse = useCallback(
+    async (courseId) => {
+      if (!user) return;
+      await axios.post(
+        `${API_URL}/curriculum/courses/${courseId}/enroll`,
+        { studentId: user._id },
+        { headers: getAuthHeaders() }
+      );
+      setEnrolledCourses((prev) => [...new Set([...prev, courseId])]);
+      fetchCourses();
+    },
+    [API_URL, user, getAuthHeaders, fetchCourses]
+  );
 
-  const unenrollCourse = useCallback(async (courseId) => {
-    if (!user) return;
-    try {
-       await axios.post(`${API_URL}/curriculum/courses/${courseId}/unenroll`, { studentId: user._id }, {
-         headers: getAuthHeaders()
-       });
-       setEnrolledCourses((prev) => prev.filter(id => id !== courseId));
-       fetchCourses();
-    } catch (err) {
-       console.error('Error unenrolling from course:', err);
-       throw err;
-    }
-  }, [API_URL, user, getAuthHeaders, fetchCourses]);
-
-  // TODO: Implement Material/Assignment/Grade API calls similar to above
-  // State is initialized as empty arrays and will be populated via API calls.
+  const unenrollCourse = useCallback(
+    async (courseId) => {
+      if (!user) return;
+      await axios.post(
+        `${API_URL}/curriculum/courses/${courseId}/unenroll`,
+        { studentId: user._id },
+        { headers: getAuthHeaders() }
+      );
+      setEnrolledCourses((prev) => prev.filter((id) => String(id) !== String(courseId)));
+      fetchCourses();
+    },
+    [API_URL, user, getAuthHeaders, fetchCourses]
+  );
 
   const getMaterials = useCallback(() => materials, [materials]);
 
-  const getMaterialsByCourse = useCallback((courseId) => {
-    return materials.filter((material) => material.courseId === courseId);
-  }, [materials]);
+  const getMaterialsByCourse = useCallback(
+    (courseId) => materials.filter((material) => String(material.courseId) === String(courseId)),
+    [materials]
+  );
 
-  const uploadMaterial = useCallback((courseId, materialData) => {
-    const newMaterial = {
-      id: 'material_' + Date.now(),
-      courseId,
-      courseName: courses.find((c) => c.id === courseId)?.name,
-      uploadedAt: new Date().toISOString(),
-      ...materialData,
-    };
-    setMaterials((prev) => [...prev, newMaterial]);
-    return newMaterial;
-  }, [courses]);
+  const uploadMaterial = useCallback(
+    (courseId, materialData) => {
+      const course = courses.find((c) => String(c.id) === String(courseId));
+      const newMaterial = {
+        id: `material_${Date.now()}`,
+        courseId,
+        courseName: course?.name,
+        uploadedAt: new Date().toISOString(),
+        uploadedBy: user?.name || 'Staff',
+        ...materialData,
+      };
+      setMaterials((prev) => [newMaterial, ...prev]);
+      return newMaterial;
+    },
+    [courses, user]
+  );
 
   const deleteMaterial = useCallback((id) => {
     setMaterials((prev) => prev.filter((material) => material.id !== id));
   }, []);
 
   const updateMaterial = useCallback((id, materialData) => {
-    setMaterials((prev) =>
-      prev.map((material) =>
-        material.id === id ? { ...material, ...materialData } : material
-      )
-    );
+    setMaterials((prev) => prev.map((material) => (material.id === id ? { ...material, ...materialData } : material)));
   }, []);
 
   const getAssignments = useCallback(() => assignments, [assignments]);
 
-  const getAssignmentsByCourse = useCallback((courseId) => {
-    return assignments.filter((assignment) => assignment.courseId === courseId);
-  }, [assignments]);
+  const getAssignmentsByCourse = useCallback(
+    (courseId) => assignments.filter((assignment) => String(assignment.courseId) === String(courseId)),
+    [assignments]
+  );
+
+  const getAssignmentById = useCallback(
+    (assignmentId) => assignments.find((a) => String(a.id) === String(assignmentId)) || null,
+    [assignments]
+  );
+
+  const createAssignment = useCallback(
+    (assignmentData) => {
+      const course = courses.find((c) => String(c.id) === String(assignmentData.courseId));
+      const newAssignment = {
+        id: `assignment_${Date.now()}`,
+        courseId: assignmentData.courseId,
+        courseName: course?.name || assignmentData.courseName,
+        title: assignmentData.title,
+        description: assignmentData.description || '',
+        dueDate: assignmentData.dueDate,
+        totalPoints: Number(assignmentData.totalPoints || 100),
+        submitted: false,
+        submittedAt: null,
+        createdAt: new Date().toISOString(),
+        createdBy: user?.name || 'Staff',
+      };
+      setAssignments((prev) => [newAssignment, ...prev]);
+      return newAssignment;
+    },
+    [courses, user]
+  );
+
+  const updateAssignment = useCallback((assignmentId, patch) => {
+    setAssignments((prev) => prev.map((a) => (a.id === assignmentId ? { ...a, ...patch } : a)));
+  }, []);
+
+  const deleteAssignment = useCallback((assignmentId) => {
+    setAssignments((prev) => prev.filter((a) => a.id !== assignmentId));
+    setGrades((prev) => prev.filter((g) => g.assignmentId !== assignmentId));
+  }, []);
 
   const submitAssignment = useCallback((assignmentId, submissionData) => {
     setAssignments((prev) =>
       prev.map((assignment) =>
         assignment.id === assignmentId
-          ? { ...assignment, submitted: true, submittedAt: new Date().toISOString() }
+          ? {
+              ...assignment,
+              submitted: true,
+              submittedAt: new Date().toISOString(),
+              submission: submissionData || null,
+            }
           : assignment
       )
     );
@@ -210,16 +277,36 @@ export const CurriculumProvider = ({ children }) => {
 
   const getGrades = useCallback(() => grades, [grades]);
 
-  const getGradesByStudent = useCallback(() => grades, [grades]);
+  const getGradesByStudent = useCallback(
+    (studentId) => {
+      if (!studentId) return grades;
+      return grades.filter((g) => String(g.studentId || '') === String(studentId));
+    },
+    [grades]
+  );
 
-  const addGrade = useCallback((assignmentId, gradeData) => {
-    const newGrade = {
-      id: 'grade_' + Date.now(),
-      ...gradeData,
-      gradedAt: new Date().toISOString(),
-    };
-    setGrades((prev) => [...prev, newGrade]);
-  }, []);
+  const addGrade = useCallback(
+    (assignmentId, gradeData) => {
+      const newGrade = {
+        id: `grade_${Date.now()}`,
+        assignmentId: assignmentId || gradeData.assignmentId || null,
+        courseId: gradeData.courseId,
+        courseName: gradeData.courseName,
+        assignmentTitle: gradeData.assignmentTitle,
+        studentId: gradeData.studentId || null,
+        studentName: gradeData.studentName || null,
+        points: Number(gradeData.points),
+        totalPoints: Number(gradeData.totalPoints),
+        letterGrade:
+          gradeData.letterGrade || computeLetterGrade(Number(gradeData.points), Number(gradeData.totalPoints)),
+        feedback: gradeData.feedback || '',
+        gradedAt: new Date().toISOString(),
+      };
+      setGrades((prev) => [newGrade, ...prev]);
+      return newGrade;
+    },
+    []
+  );
 
   const value = {
     courses,
@@ -227,29 +314,35 @@ export const CurriculumProvider = ({ children }) => {
     assignments,
     grades,
     enrolledCourses,
+
     getCourses,
     getCourseById,
     createCourse,
     updateCourse,
     deleteCourse,
     enrollCourse,
-    unenrollCourse, // Added unenroll
+    unenrollCourse,
+
     getMaterials,
     getMaterialsByCourse,
     uploadMaterial,
     deleteMaterial,
     updateMaterial,
+
     getAssignments,
     getAssignmentsByCourse,
+    getAssignmentById,
+    createAssignment,
+    updateAssignment,
+    deleteAssignment,
     submitAssignment,
+
     getGrades,
     getGradesByStudent,
     addGrade,
   };
 
-  return (
-    <CurriculumContext.Provider value={value}>{children}</CurriculumContext.Provider>
-  );
+  return <CurriculumContext.Provider value={value}>{children}</CurriculumContext.Provider>;
 };
 
 export const useCurriculum = () => {

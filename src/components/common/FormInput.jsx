@@ -25,7 +25,7 @@ export const FormInput = ({
         id={name}
         name={name}
         placeholder={placeholder}
-        value={value}
+        {...(type === 'file' ? {} : { value: value ?? '' })}
         onChange={onChange}
         disabled={disabled}
         className={`w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 disabled:bg-gray-100 ${

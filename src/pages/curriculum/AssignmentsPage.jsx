@@ -2,12 +2,12 @@ import React, { useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FileText, Calendar, BookOpen, CheckCircle, AlertCircle } from 'lucide-react';
 import { useCurriculum } from '../../context/CurriculumContext';
-import { Card, CardBody, Button, FormSelect } from '../../components/common';
+import { Card, CardBody, Button } from '../../components/common';
 import { formatDate, daysUntil, isDatePast } from '../../utils/dateUtils';
 
 export const AssignmentsPage = () => {
   const navigate = useNavigate();
-  const { assignments, courses } = useCurriculum();
+  const { assignments } = useCurriculum();
   const [filterStatus, setFilterStatus] = useState('all');
 
   const filteredAssignments = useMemo(() => {
