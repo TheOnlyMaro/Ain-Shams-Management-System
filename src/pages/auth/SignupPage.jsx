@@ -64,6 +64,7 @@ export const SignupPage = () => {
           phone: formData.phone,
           role,
           specialInfo: formData.specialInfo,
+          staffType: role === 'staff' ? formData.specialInfo : undefined,
           createdAt: new Date().toISOString(),
           password: formData.password,
         };

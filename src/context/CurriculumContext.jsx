@@ -1,237 +1,275 @@
-import React, { createContext, useState, useCallback } from 'react';
+import React, { createContext, useState, useCallback, useEffect } from 'react';
+import axios from 'axios';
+import { useAuth } from './AuthContext';
 
 export const CurriculumContext = createContext();
 
-const mockCourses = [
-  {
-    id: 'course_1',
-    name: 'Introduction to Computer Science',
-    code: 'CS101',
-    instructor: 'Dr. John Smith',
-    credits: 3,
-    description: 'Fundamentals of computer science and programming',
-    schedule: 'MWF 9:00 AM - 10:30 AM',
-    capacity: 30,
-    enrolled: 28,
-  },
-  {
-    id: 'course_2',
-    name: 'Data Structures and Algorithms',
-    code: 'CS201',
-    instructor: 'Prof. Jane Doe',
-    credits: 4,
-    description: 'Advanced data structures and algorithm design',
-    schedule: 'TuTh 10:00 AM - 11:30 AM',
-    capacity: 25,
-    enrolled: 24,
-  },
-  {
-    id: 'course_3',
-    name: 'Database Systems',
-    code: 'CS301',
-    instructor: 'Dr. Mike Johnson',
-    credits: 3,
-    description: 'Database design and SQL programming',
-    schedule: 'MWF 2:00 PM - 3:30 PM',
-    capacity: 20,
-    enrolled: 18,
-  },
-  {
-    id: 'course_4',
-    name: 'Web Development',
-    code: 'CS250',
-    instructor: 'Sarah Williams',
-    credits: 3,
-    description: 'Full-stack web development with modern frameworks',
-    schedule: 'TuTh 1:00 PM - 2:30 PM',
-    capacity: 35,
-    enrolled: 32,
-  },
-  {
-    id: 'course_5',
-    name: 'Machine Learning Basics',
-    code: 'CS401',
-    instructor: 'Dr. Alex Chen',
-    credits: 4,
-    description: 'Introduction to machine learning algorithms',
-    schedule: 'MWF 11:00 AM - 12:30 PM',
-    capacity: 22,
-    enrolled: 20,
-  },
-];
+const STORAGE_PREFIX = 'asms.curriculum.v1';
 
-const mockMaterials = [
-  {
-    id: 'material_1',
-    courseId: 'course_1',
-    courseName: 'Introduction to Computer Science',
-    title: 'Lecture 1: Computer Basics',
-    type: 'pdf',
-    uploadedBy: 'Dr. John Smith',
-    uploadedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    fileSize: '2.5 MB',
-    url: '#',
-  },
-  {
-    id: 'material_2',
-    courseId: 'course_1',
-    courseName: 'Introduction to Computer Science',
-    title: 'Python Tutorial Video',
-    type: 'video',
-    uploadedBy: 'Dr. John Smith',
-    uploadedAt: new Date(Date.now() - 3 * 24 * 60 * 60 * 1000).toISOString(),
-    fileSize: '150 MB',
-    url: '#',
-  },
-  {
-    id: 'material_3',
-    courseId: 'course_2',
-    courseName: 'Data Structures and Algorithms',
-    title: 'Assignment 1: Linked Lists',
-    type: 'pdf',
-    uploadedBy: 'Prof. Jane Doe',
-    uploadedAt: new Date(Date.now() - 1 * 24 * 60 * 60 * 1000).toISOString(),
-    fileSize: '1.2 MB',
-    url: '#',
-  },
-];
+const readJson = (key, fallback) => {
+  try {
+    const raw = localStorage.getItem(`${STORAGE_PREFIX}:${key}`);
+    return raw ? JSON.parse(raw) : fallback;
+  } catch {
+    return fallback;
+  }
+};
 
-const mockAssignments = [
-  {
-    id: 'assign_1',
-    courseId: 'course_1',
-    courseName: 'Introduction to Computer Science',
-    title: 'Assignment 1: Variables and Data Types',
-    description: 'Write a program to demonstrate understanding of variables and data types',
-    dueDate: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
-    totalPoints: 100,
-    submitted: false,
-  },
-  {
-    id: 'assign_2',
-    courseId: 'course_1',
-    courseName: 'Introduction to Computer Science',
-    title: 'Assignment 2: Control Structures',
-    description: 'Write programs using loops and conditionals',
-    dueDate: new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString(),
-    totalPoints: 100,
-    submitted: false,
-  },
-  {
-    id: 'assign_3',
-    courseId: 'course_2',
-    courseName: 'Data Structures and Algorithms',
-    title: 'Project 1: Implement Stack and Queue',
-    description: 'Implement Stack and Queue data structures with all operations',
-    dueDate: new Date(Date.now() + 21 * 24 * 60 * 60 * 1000).toISOString(),
-    totalPoints: 150,
-    submitted: false,
-  },
-];
+const writeJson = (key, value) => {
+  try {
+    localStorage.setItem(`${STORAGE_PREFIX}:${key}`, JSON.stringify(value));
+  } catch {
+    // ignore
+  }
+};
 
-const mockGrades = [
-  {
-    id: 'grade_1',
-    courseId: 'course_1',
-    courseName: 'Introduction to Computer Science',
-    assignmentTitle: 'Assignment 1: Variables and Data Types',
-    points: 95,
-    totalPoints: 100,
-    letterGrade: 'A',
-    gradedAt: new Date(Date.now() - 2 * 24 * 60 * 60 * 1000).toISOString(),
-    feedback: 'Excellent work! Well structured code.',
-  },
-  {
-    id: 'grade_2',
-    courseId: 'course_2',
-    courseName: 'Data Structures and Algorithms',
-    assignmentTitle: 'Assignment 1: Linked Lists',
-    points: 88,
-    totalPoints: 100,
-    letterGrade: 'B+',
-    gradedAt: new Date(Date.now() - 5 * 24 * 60 * 60 * 1000).toISOString(),
-    feedback: 'Good implementation. Consider optimizing for edge cases.',
-  },
-];
+const computeLetterGrade = (points, totalPoints) => {
+  const pct = totalPoints ? (points / totalPoints) * 100 : 0;
+  if (pct >= 97) return 'A+';
+  if (pct >= 93) return 'A';
+  if (pct >= 90) return 'A-';
+  if (pct >= 87) return 'B+';
+  if (pct >= 83) return 'B';
+  if (pct >= 80) return 'B-';
+  if (pct >= 77) return 'C+';
+  if (pct >= 73) return 'C';
+  if (pct >= 70) return 'C-';
+  if (pct >= 60) return 'D';
+  return 'F';
+};
 
 export const CurriculumProvider = ({ children }) => {
-  const [courses, setCourses] = useState(mockCourses);
-  const [materials, setMaterials] = useState(mockMaterials);
-  const [assignments, setAssignments] = useState(mockAssignments);
-  const [grades, setGrades] = useState(mockGrades);
-  const [enrolledCourses, setEnrolledCourses] = useState(['course_1', 'course_2']);
+  const [courses, setCourses] = useState([]);
+  const [materials, setMaterials] = useState(() => readJson('materials', []));
+  const [assignments, setAssignments] = useState(() => readJson('assignments', []));
+  const [grades, setGrades] = useState(() => readJson('grades', []));
+  const [enrolledCourses, setEnrolledCourses] = useState(() => readJson('enrolledCourses', []));
+
+  const { user, authToken } = useAuth();
+
+  const apiBase = (import.meta.env.VITE_API_URL ?? 'http://localhost:4000').replace(/\/+$/, '');
+  const API_URL = apiBase.endsWith('/api') ? apiBase : `${apiBase}/api`;
+
+  useEffect(() => writeJson('materials', materials), [materials]);
+  useEffect(() => writeJson('assignments', assignments), [assignments]);
+  useEffect(() => writeJson('grades', grades), [grades]);
+  useEffect(() => writeJson('enrolledCourses', enrolledCourses), [enrolledCourses]);
+
+  const getAuthHeaders = useCallback(() => {
+    const token =
+      authToken ||
+      (() => {
+        try {
+          return localStorage.getItem('authToken') || null;
+        } catch {
+          return null;
+        }
+      })();
+    return token ? { Authorization: `Bearer ${token}` } : {};
+  }, [authToken]);
+
+  const fetchCourses = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_URL}/curriculum/courses`, {
+        headers: getAuthHeaders(),
+      });
+      if (res.data.success) {
+        setCourses(res.data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching courses:', err);
+    }
+  }, [API_URL, getAuthHeaders]);
+
+  const fetchEnrolledCourses = useCallback(async () => {
+    if (!user || user.role !== 'student') return;
+    try {
+      const res = await axios.get(`${API_URL}/curriculum/courses/enrolled/${user._id}`, {
+        headers: getAuthHeaders(),
+      });
+      if (res.data.success) {
+        setEnrolledCourses(res.data.data.map((c) => c.id));
+      }
+    } catch (err) {
+      console.error('Error fetching enrolled courses:', err);
+    }
+  }, [API_URL, user, getAuthHeaders]);
+
+  useEffect(() => {
+    fetchCourses();
+  }, [fetchCourses]);
+
+  useEffect(() => {
+    if (user && user.role === 'student') {
+      fetchEnrolledCourses();
+    }
+  }, [user, fetchEnrolledCourses]);
 
   const getCourses = useCallback(() => courses, [courses]);
 
-  const getCourseById = useCallback((id) => {
-    return courses.find((course) => course.id === id);
-  }, [courses]);
+  const getCourseById = useCallback(
+    (id) => courses.find((c) => String(c.id) === String(id)) || null,
+    [courses]
+  );
 
-  const createCourse = useCallback((courseData) => {
-    const newCourse = {
-      id: 'course_' + Date.now(),
-      ...courseData,
-      enrolled: 0,
-    };
-    setCourses((prev) => [...prev, newCourse]);
-    return newCourse;
-  }, []);
+  const createCourse = useCallback(
+    async (courseData) => {
+      const res = await axios.post(`${API_URL}/curriculum/courses`, courseData, {
+        headers: getAuthHeaders(),
+      });
+      if (res.data.success) {
+        const newCourse = res.data.data;
+        setCourses((prev) => [newCourse, ...prev]);
+        return newCourse;
+      }
+      throw new Error('Failed to create course');
+    },
+    [API_URL, getAuthHeaders]
+  );
 
-  const updateCourse = useCallback((id, courseData) => {
-    setCourses((prev) =>
-      prev.map((course) => (course.id === id ? { ...course, ...courseData } : course))
-    );
-  }, []);
+  const updateCourse = useCallback(
+    async (id, courseData) => {
+      const courseId = typeof id === 'string' ? parseInt(id, 10) : id;
+      const res = await axios.patch(`${API_URL}/curriculum/courses/${courseId}`, courseData, {
+        headers: getAuthHeaders(),
+      });
+      if (res.data.success) {
+        setCourses((prev) =>
+          prev.map((course) => {
+            const courseIdNum = typeof course.id === 'string' ? parseInt(course.id, 10) : course.id;
+            return courseIdNum === courseId ? res.data.data : course;
+          })
+        );
+        return res.data.data;
+      }
+      throw new Error('Failed to update course');
+    },
+    [API_URL, getAuthHeaders]
+  );
 
-  const deleteCourse = useCallback((id) => {
-    setCourses((prev) => prev.filter((course) => course.id !== id));
-  }, []);
+  const deleteCourse = useCallback(
+    async (id) => {
+      await axios.delete(`${API_URL}/curriculum/courses/${id}`, {
+        headers: getAuthHeaders(),
+      });
+      setCourses((prev) => prev.filter((course) => String(course.id) !== String(id)));
+    },
+    [API_URL, getAuthHeaders]
+  );
 
-  const enrollCourse = useCallback((courseId) => {
-    setEnrolledCourses((prev) => [...new Set([...prev, courseId])]);
-  }, []);
+  const enrollCourse = useCallback(
+    async (courseId) => {
+      if (!user) return;
+      await axios.post(
+        `${API_URL}/curriculum/courses/${courseId}/enroll`,
+        { studentId: user._id },
+        { headers: getAuthHeaders() }
+      );
+      setEnrolledCourses((prev) => [...new Set([...prev, courseId])]);
+      fetchCourses();
+    },
+    [API_URL, user, getAuthHeaders, fetchCourses]
+  );
+
+  const unenrollCourse = useCallback(
+    async (courseId) => {
+      if (!user) return;
+      await axios.post(
+        `${API_URL}/curriculum/courses/${courseId}/unenroll`,
+        { studentId: user._id },
+        { headers: getAuthHeaders() }
+      );
+      setEnrolledCourses((prev) => prev.filter((id) => String(id) !== String(courseId)));
+      fetchCourses();
+    },
+    [API_URL, user, getAuthHeaders, fetchCourses]
+  );
 
   const getMaterials = useCallback(() => materials, [materials]);
 
-  const getMaterialsByCourse = useCallback((courseId) => {
-    return materials.filter((material) => material.courseId === courseId);
-  }, [materials]);
+  const getMaterialsByCourse = useCallback(
+    (courseId) => materials.filter((material) => String(material.courseId) === String(courseId)),
+    [materials]
+  );
 
-  const uploadMaterial = useCallback((courseId, materialData) => {
-    const newMaterial = {
-      id: 'material_' + Date.now(),
-      courseId,
-      courseName: courses.find((c) => c.id === courseId)?.name,
-      uploadedAt: new Date().toISOString(),
-      ...materialData,
-    };
-    setMaterials((prev) => [...prev, newMaterial]);
-    return newMaterial;
-  }, [courses]);
+  const uploadMaterial = useCallback(
+    (courseId, materialData) => {
+      const course = courses.find((c) => String(c.id) === String(courseId));
+      const newMaterial = {
+        id: `material_${Date.now()}`,
+        courseId,
+        courseName: course?.name,
+        uploadedAt: new Date().toISOString(),
+        uploadedBy: user?.name || 'Staff',
+        ...materialData,
+      };
+      setMaterials((prev) => [newMaterial, ...prev]);
+      return newMaterial;
+    },
+    [courses, user]
+  );
 
   const deleteMaterial = useCallback((id) => {
     setMaterials((prev) => prev.filter((material) => material.id !== id));
   }, []);
 
   const updateMaterial = useCallback((id, materialData) => {
-    setMaterials((prev) =>
-      prev.map((material) =>
-        material.id === id ? { ...material, ...materialData } : material
-      )
-    );
+    setMaterials((prev) => prev.map((material) => (material.id === id ? { ...material, ...materialData } : material)));
   }, []);
 
   const getAssignments = useCallback(() => assignments, [assignments]);
 
-  const getAssignmentsByCourse = useCallback((courseId) => {
-    return assignments.filter((assignment) => assignment.courseId === courseId);
-  }, [assignments]);
+  const getAssignmentsByCourse = useCallback(
+    (courseId) => assignments.filter((assignment) => String(assignment.courseId) === String(courseId)),
+    [assignments]
+  );
+
+  const getAssignmentById = useCallback(
+    (assignmentId) => assignments.find((a) => String(a.id) === String(assignmentId)) || null,
+    [assignments]
+  );
+
+  const createAssignment = useCallback(
+    (assignmentData) => {
+      const course = courses.find((c) => String(c.id) === String(assignmentData.courseId));
+      const newAssignment = {
+        id: `assignment_${Date.now()}`,
+        courseId: assignmentData.courseId,
+        courseName: course?.name || assignmentData.courseName,
+        title: assignmentData.title,
+        description: assignmentData.description || '',
+        dueDate: assignmentData.dueDate,
+        totalPoints: Number(assignmentData.totalPoints || 100),
+        submitted: false,
+        submittedAt: null,
+        createdAt: new Date().toISOString(),
+        createdBy: user?.name || 'Staff',
+      };
+      setAssignments((prev) => [newAssignment, ...prev]);
+      return newAssignment;
+    },
+    [courses, user]
+  );
+
+  const updateAssignment = useCallback((assignmentId, patch) => {
+    setAssignments((prev) => prev.map((a) => (a.id === assignmentId ? { ...a, ...patch } : a)));
+  }, []);
+
+  const deleteAssignment = useCallback((assignmentId) => {
+    setAssignments((prev) => prev.filter((a) => a.id !== assignmentId));
+    setGrades((prev) => prev.filter((g) => g.assignmentId !== assignmentId));
+  }, []);
 
   const submitAssignment = useCallback((assignmentId, submissionData) => {
     setAssignments((prev) =>
       prev.map((assignment) =>
         assignment.id === assignmentId
-          ? { ...assignment, submitted: true, submittedAt: new Date().toISOString() }
+          ? {
+              ...assignment,
+              submitted: true,
+              submittedAt: new Date().toISOString(),
+              submission: submissionData || null,
+            }
           : assignment
       )
     );
@@ -239,16 +277,36 @@ export const CurriculumProvider = ({ children }) => {
 
   const getGrades = useCallback(() => grades, [grades]);
 
-  const getGradesByStudent = useCallback(() => grades, [grades]);
+  const getGradesByStudent = useCallback(
+    (studentId) => {
+      if (!studentId) return grades;
+      return grades.filter((g) => String(g.studentId || '') === String(studentId));
+    },
+    [grades]
+  );
 
-  const addGrade = useCallback((assignmentId, gradeData) => {
-    const newGrade = {
-      id: 'grade_' + Date.now(),
-      ...gradeData,
-      gradedAt: new Date().toISOString(),
-    };
-    setGrades((prev) => [...prev, newGrade]);
-  }, []);
+  const addGrade = useCallback(
+    (assignmentId, gradeData) => {
+      const newGrade = {
+        id: `grade_${Date.now()}`,
+        assignmentId: assignmentId || gradeData.assignmentId || null,
+        courseId: gradeData.courseId,
+        courseName: gradeData.courseName,
+        assignmentTitle: gradeData.assignmentTitle,
+        studentId: gradeData.studentId || null,
+        studentName: gradeData.studentName || null,
+        points: Number(gradeData.points),
+        totalPoints: Number(gradeData.totalPoints),
+        letterGrade:
+          gradeData.letterGrade || computeLetterGrade(Number(gradeData.points), Number(gradeData.totalPoints)),
+        feedback: gradeData.feedback || '',
+        gradedAt: new Date().toISOString(),
+      };
+      setGrades((prev) => [newGrade, ...prev]);
+      return newGrade;
+    },
+    []
+  );
 
   const value = {
     courses,
@@ -256,28 +314,35 @@ export const CurriculumProvider = ({ children }) => {
     assignments,
     grades,
     enrolledCourses,
+
     getCourses,
     getCourseById,
     createCourse,
     updateCourse,
     deleteCourse,
     enrollCourse,
+    unenrollCourse,
+
     getMaterials,
     getMaterialsByCourse,
     uploadMaterial,
     deleteMaterial,
     updateMaterial,
+
     getAssignments,
     getAssignmentsByCourse,
+    getAssignmentById,
+    createAssignment,
+    updateAssignment,
+    deleteAssignment,
     submitAssignment,
+
     getGrades,
     getGradesByStudent,
     addGrade,
   };
 
-  return (
-    <CurriculumContext.Provider value={value}>{children}</CurriculumContext.Provider>
-  );
+  return <CurriculumContext.Provider value={value}>{children}</CurriculumContext.Provider>;
 };
 
 export const useCurriculum = () => {

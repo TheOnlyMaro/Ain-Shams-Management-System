@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Edit2, Trash2, Eye } from 'lucide-react';
+import { Plus, Edit2, Trash2 } from 'lucide-react';
 import { useCurriculum } from '../../context/CurriculumContext';
 import { Card, CardHeader, CardBody, Button, Modal, FormInput, FormSelect, FormTextarea } from '../../components/common';
 
@@ -30,23 +30,35 @@ export const AdminCoursesPage = () => {
     setEditingCourse(null);
   };
 
-  const handleSaveCourse = (e) => {
+  const handleSaveCourse = async (e) => {
     e.preventDefault();
-    if (editingCourse) {
-      updateCourse(editingCourse.id, {
-        ...formData,
+    try {
+      const courseData = {
+        code: formData.code.trim(),
+        name: formData.name.trim(),
+        description: formData.description.trim(),
+        instructorName: formData.instructor.trim(),
+        schedule: formData.schedule.trim(),
         credits: parseInt(formData.credits),
         capacity: parseInt(formData.capacity),
-      });
-    } else {
-      createCourse({
-        ...formData,
-        credits: parseInt(formData.credits),
-        capacity: parseInt(formData.capacity),
-      });
+      };
+
+      if (editingCourse) {
+        // Ensure course ID is a number
+        const courseId = typeof editingCourse.id === 'string' ? parseInt(editingCourse.id) : editingCourse.id;
+        await updateCourse(courseId, courseData);
+      } else {
+        await createCourse(courseData);
+      }
+      setShowNewCourseModal(false);
+      handleResetForm();
+    } catch (error) {
+      console.error('Failed to save course:', error);
+      const errorMessage = error.response?.data?.errors 
+        ? error.response.data.errors.map(e => e.msg || e.message).join(', ')
+        : error.response?.data?.message || error.message || 'Failed to save course. Please check the inputs and try again.';
+      alert(errorMessage);
     }
-    setShowNewCourseModal(false);
-    handleResetForm();
   };
 
   const handleEditCourse = (course) => {

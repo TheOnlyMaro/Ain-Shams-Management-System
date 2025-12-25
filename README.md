@@ -122,15 +122,6 @@ npm run build
 
 ## 🔐 Authentication
 
-### Demo Credentials
-
-For testing purposes, use any email and password combination. The system will create a mock session:
-
-```
-Email: demo@example.com
-Password: password123 (min 8 characters)
-```
-
 ### Roles
 
 1. **Student**
@@ -219,12 +210,11 @@ The frontend expects the following API endpoints (to be implemented):
 
 ## 🧪 Testing
 
-The application currently uses mock data for demonstration. To test different roles:
+To test the application:
 
 1. Go to `/login`
-2. Select desired role from dropdown
-3. Enter any email and password (min 8 characters)
-4. Click "Sign In"
+2. Enter your credentials
+3. Click "Sign In"
 
 ## 📦 Dependencies
 
