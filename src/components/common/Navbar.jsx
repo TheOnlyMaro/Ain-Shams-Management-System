@@ -20,11 +20,13 @@ export const Navbar = () => {
       { label: 'Courses', href: '/courses' },
       { label: 'Assignments', href: '/assignments' },
       { label: 'Grades', href: '/grades' },
+      { label: 'Messages', href: '/messages' }, 
       { label: 'Announcements', href: '/announcements' },
     ],
     admin: [
       { label: 'Dashboard', href: '/dashboard' },
       { label: 'Applications', href: '/admin/applications' },
+      { label: 'Messages', href: '/messages' },
       { label: 'Announcements', href: '/admin/announcements' },
       { label: 'Course Management', href: '/admin/courses' },
     ],
@@ -33,10 +35,12 @@ export const Navbar = () => {
       { label: 'Courses', href: '/staff/courses' },
       { label: 'Materials', href: '/staff/materials' },
       { label: 'Grades', href: '/staff/grades' },
+      { label: 'Messages', href: '/messages' },
       { label: 'Announcements', href: '/admin/announcements' },
     ],
     parent: [
       { label: 'Dashboard', href: '/dashboard' },
+      { label: 'Messages', href: '/messages' },
       { label: 'Announcements', href: '/announcements' },
     ],
   };

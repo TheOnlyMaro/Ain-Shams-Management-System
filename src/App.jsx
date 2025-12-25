@@ -93,14 +93,7 @@ export const App = () => {
                     }
                   />
 
-                  <Route
-                    path="/announcements"
-                    element={
-                      <ProtectedRoute>
-                        <AnnouncementsPage />
-                      </ProtectedRoute>
-                    }
-                  />
+                  
 
                   <Route
                     path="/admin/applications"
@@ -121,6 +114,22 @@ export const App = () => {
                   />
 
                   <Route path="*" element={<Navigate to="/" replace />} />
+ 
+                  <Route path="/messages" element={
+    <ProtectedRoute>
+      <MessagesPage />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/announcements"
+  element={
+    <ProtectedRoute>
+      <EnhancedAnnouncementsPage />
+    </ProtectedRoute>
+  }
+/>
                 </Routes>
               </div>
             </AnnouncementProvider>
