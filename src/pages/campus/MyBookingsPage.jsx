@@ -6,7 +6,7 @@ import { Card, CardHeader, CardBody, Button, FormSelect } from '../../components
 
 const statusBadge = (status) => {
   switch (status) {
-    case 'approved':
+    case 'confirmed':
       return 'bg-green-100 text-green-700';
     case 'rejected':
       return 'bg-red-100 text-red-700';
@@ -18,8 +18,12 @@ const statusBadge = (status) => {
 };
 
 export const MyBookingsPage = () => {
-  const { classrooms, myBookings, cancelBookingRequest } = useCampus();
+  const { classrooms, myBookings, cancelBookingRequest, fetchBookings } = useCampus();
   const [filterStatus, setFilterStatus] = useState('all');
+
+  React.useEffect(() => {
+    fetchBookings();
+  }, [fetchBookings]);
 
   const filtered = useMemo(() => {
     if (!filterStatus || filterStatus === 'all') return myBookings;
@@ -28,7 +32,7 @@ export const MyBookingsPage = () => {
 
   const iconForStatus = (status) => {
     switch (status) {
-      case 'approved':
+      case 'confirmed':
         return <CheckCircle className="w-5 h-5 text-green-600" />;
       case 'rejected':
         return <XCircle className="w-5 h-5 text-red-600" />;
@@ -65,7 +69,7 @@ export const MyBookingsPage = () => {
                 options={[
                   { label: 'All', value: 'all' },
                   { label: 'Pending', value: 'pending' },
-                  { label: 'Approved', value: 'approved' },
+                  { label: 'Confirmed', value: 'confirmed' },
                   { label: 'Rejected', value: 'rejected' },
                   { label: 'Cancelled', value: 'cancelled' },
                 ]}

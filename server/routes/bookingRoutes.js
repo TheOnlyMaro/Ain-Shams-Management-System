@@ -50,5 +50,17 @@ router.patch(
   bookingController.cancelBooking
 );
 
+// Update status (approve/reject)
+router.patch(
+  '/:bookingId/status',
+  authenticate,
+  [
+    param('bookingId').isInt(),
+    body('status').isIn(['pending', 'confirmed', 'cancelled', 'completed'])
+  ],
+  validateRequest,
+  bookingController.updateBookingStatus
+);
+
 module.exports = router;
 

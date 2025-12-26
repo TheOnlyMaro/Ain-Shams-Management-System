@@ -101,6 +101,9 @@ exports.mapGradeRowToApi = (row) => {
     feedback: row.feedback || '',
     assignmentTitle: row.assignment_title || '',
     assignmentTotalPoints: Number(row.assignment_total_points) || 0,
+  };
+};
+
 exports.mapClassroomRowToApi = (row) => {
   if (!row) return null;
   return {
@@ -125,6 +128,8 @@ exports.mapGradeApiToSql = (body) => ({
   student_id: Number(body.studentId || body.student_id || body.student) || null,
   points: Number(body.points) || 0,
   feedback: body.feedback || '',
+});
+
 exports.mapClassroomApiToSql = (body) => ({
   room_number: body.roomNumber || body.room_number || '',
   building: body.building || '',

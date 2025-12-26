@@ -97,7 +97,7 @@ const DEFAULT_RESEARCH = [
 export const CampusProvider = ({ children }) => {
   const { user } = useAuth();
 
-  const [classrooms, setClassrooms] = useState(() => readJson('classrooms', DEFAULT_CLASSROOMS));
+  const [classrooms, setClassrooms] = useState([]);
   const [bookings, setBookings] = useState(() => readJson('bookings', []));
   const [events, setEvents] = useState(() => readJson('events', DEFAULT_EVENTS));
   const [maintenanceIssues, setMaintenanceIssues] = useState([]);
@@ -108,7 +108,34 @@ export const CampusProvider = ({ children }) => {
 
   useEffect(() => writeJson('classrooms', classrooms), [classrooms]);
   useEffect(() => writeJson('bookings', bookings), [bookings]);
-  useEffect(() => writeJson('events', events), [events]);
+
+  // Fetch classrooms from API
+  const fetchClassrooms = useCallback(async () => {
+    try {
+      const res = await api.get('/classrooms');
+      if (res.data.success) {
+        // Map API response to frontend expected structure if necessary
+        // Backend returns: snake_case mostly, but check transformers.js
+        // Step 154 transformers.js: mapClassroomRowToApi returns camelCase: roomNumber, building, capacity, etc.
+        // Frontend expects: id, name, building, capacity, features
+        // Let's verify mapping:
+        // API: id, roomNumber, building, floor, roomType, capacity, amenities
+        // Frontend (DEFAULT_CLASSROOMS): id, name, building, capacity, features
+        const mapped = res.data.data.map(c => ({
+          ...c,
+          name: `${c.roomNumber} (${c.building})`, // Construct a display name
+          features: c.amenities ? c.amenities.split(',') : [] // Map amenities string to features array
+        }));
+        setClassrooms(mapped);
+      }
+    } catch (err) {
+      console.error('Failed to fetch classrooms', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchClassrooms();
+  }, [fetchClassrooms]);
 
   useEffect(() => writeJson('payrollRecords', payrollRecords), [payrollRecords]);
   useEffect(() => writeJson('researchPublications', researchPublications), [researchPublications]);
@@ -120,7 +147,7 @@ export const CampusProvider = ({ children }) => {
         .filter(
           (b) =>
             b.classroomId === classroomId &&
-            b.status === 'approved' &&
+            b.status === 'confirmed' &&
             String(b.date).slice(0, 10) === dateKey
         )
         .sort((a, b) => parseTimeToMinutes(a.startTime) - parseTimeToMinutes(b.startTime));
@@ -128,110 +155,116 @@ export const CampusProvider = ({ children }) => {
     [bookings]
   );
 
+  const fetchBookings = useCallback(async (params = {}) => {
+    if (!user) return [];
+    try {
+      const { classroomId, startDate, endDate, status } = params;
+      const queryParams = new URLSearchParams();
+      if (classroomId) queryParams.append('classroomId', classroomId);
+      if (startDate) queryParams.append('startDate', startDate);
+      if (endDate) queryParams.append('endDate', endDate);
+      if (status) queryParams.append('status', status);
+
+      const res = await api.get(`/bookings?${queryParams.toString()}`);
+      if (res.data.success) {
+        // Map backend format (start_time, end_time as ISO) to frontend format (date, startTime HH:MM, endTime HH:MM)
+        const mapped = res.data.data.map((b) => {
+          const start = new Date(b.startTime); // API returns startTime as ISO
+          const end = new Date(b.endTime);
+          return {
+            ...b,
+            date: start.toISOString(), // Keep full ISO as date source
+            startTime: start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+            endTime: end.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }),
+            requestedBy: {
+              id: b.bookedByUserId,
+              name: b.bookedByName,
+              role: 'user', // Backend doesn't return role yet, defaulting
+            },
+          };
+        });
+        setBookings(mapped);
+        return mapped;
+      }
+      return [];
+    } catch (err) {
+      console.error('Failed to fetch bookings', err);
+      return [];
+    }
+  }, [user]);
+
+  // Initial fetch for all booking data (or optimise to fetch on specific page views)
+  useEffect(() => {
+    fetchBookings();
+  }, [fetchBookings]);
+
   const hasConflict = useCallback(
     ({ classroomId, date, startTime, endTime, ignoreBookingId = null }) => {
+      // This is a client-side check for immediate feedback, but the server handles race conditions.
+      // We rely on the current 'bookings' state which should be reasonably fresh.
       const dateKey = new Date(date).toISOString().slice(0, 10);
-      const approved = bookings.filter(
+      const confirmed = bookings.filter(
         (b) =>
-          b.status === 'approved' &&
+          b.status === 'confirmed' && // In DB schema it defaults to 'confirmed' for course bookings, or we might use 'approved' in frontend ref. Backend uses 'confirmed' enum.
           b.classroomId === classroomId &&
-          String(b.date).slice(0, 10) === dateKey &&
+          String(b.startTime).slice(0, 10) === dateKey && // DB stores ISO string
           (ignoreBookingId ? b.id !== ignoreBookingId : true)
       );
-      return approved.some((b) => rangesOverlap(startTime, endTime, b.startTime, b.endTime));
+
+      return confirmed.some((b) => {
+        // Backend uses ISO strings for startTime/endTime.
+        const bStart = new Date(b.startTime).toISOString().slice(11, 16); // HH:MM
+        const bEnd = new Date(b.endTime).toISOString().slice(11, 16);
+        return rangesOverlap(startTime, endTime, bStart, bEnd);
+      });
     },
     [bookings]
   );
 
   const createBookingRequest = useCallback(
-    ({ classroomId, date, startTime, endTime, purpose }) => {
-      if (!user) {
-        throw new Error('You must be logged in to request a booking');
-      }
-      if (!classroomId || !date || !startTime || !endTime) {
-        throw new Error('Please fill out all required fields');
-      }
-      if (parseTimeToMinutes(startTime) >= parseTimeToMinutes(endTime)) {
-        throw new Error('End time must be after start time');
-      }
-      if (hasConflict({ classroomId, date, startTime, endTime })) {
-        throw new Error('This time slot is already booked');
-      }
+    async ({ classroomId, date, startTime, endTime, purpose }) => {
+      if (!user) throw new Error('You must be logged in to request a booking');
+      if (!classroomId || !date || !startTime || !endTime) throw new Error('Please fill out all required fields');
 
-      const newBooking = {
-        id: `BK-${Date.now()}`,
+      // Combine date + time
+      const startDateTime = `${date.split('T')[0]}T${startTime}:00`;
+      const endDateTime = `${date.split('T')[0]}T${endTime}:00`;
+
+      const res = await api.post('/bookings', {
         classroomId,
-        date: new Date(date).toISOString(),
-        startTime,
-        endTime,
-        purpose: purpose || '',
-        status: 'pending',
-        requestedBy: {
-          id: user._id || user.id || 'unknown',
-          name: user.name || 'User',
-          role: user.role || 'user',
-        },
-        createdAt: new Date().toISOString(),
-        reviewedAt: null,
-        reviewedBy: null,
-      };
-      setBookings((prev) => [newBooking, ...prev]);
-      return newBooking;
+        title: purpose || 'Booking',
+        description: purpose || '',
+        startTime: new Date(startDateTime).toISOString(),
+        endTime: new Date(endDateTime).toISOString(),
+        bookingType: 'event', // or differentiate if needed
+      });
+
+      // Optimistic update or refetch
+      await fetchBookings();
+      return res.data.data;
     },
-    [user, hasConflict]
+    [user, fetchBookings]
   );
 
   const cancelBookingRequest = useCallback(
-    (bookingId) => {
-      setBookings((prev) =>
-        prev.map((b) => (b.id === bookingId ? { ...b, status: 'cancelled', updatedAt: new Date().toISOString() } : b))
-      );
+    async (bookingId) => {
+      await api.patch(`/bookings/${bookingId}/cancel`);
+      await fetchBookings();
     },
-    [setBookings]
+    [fetchBookings]
   );
 
+
+
+  // Placeholder for now, knowing it might fail if I don't add backend support.
   const reviewBookingRequest = useCallback(
-    ({ bookingId, action }) => {
-      if (!user) throw new Error('You must be logged in');
-
-      const booking = bookings.find((b) => b.id === bookingId);
-      if (!booking) return;
-
-      if (action === 'approve') {
-        const conflict = bookings
-          .filter(
-            (b) =>
-              b.id !== bookingId &&
-              b.status === 'approved' &&
-              b.classroomId === booking.classroomId &&
-              String(b.date).slice(0, 10) === String(booking.date).slice(0, 10)
-          )
-          .some((b) => rangesOverlap(booking.startTime, booking.endTime, b.startTime, b.endTime));
-
-        if (conflict) {
-          throw new Error('Cannot approve: this request conflicts with an existing booking');
-        }
-      }
-
-      const nextStatus = action === 'approve' ? 'approved' : 'rejected';
-      setBookings((prev) =>
-        prev.map((b) =>
-          b.id === bookingId
-            ? {
-              ...b,
-              status: nextStatus,
-              reviewedAt: new Date().toISOString(),
-              reviewedBy: {
-                id: user._id || user.id || 'unknown',
-                name: user.name || 'Reviewer',
-                role: user.role || 'user',
-              },
-            }
-            : b
-        )
-      );
+    async ({ bookingId, action }) => {
+      // action: 'approve' | 'reject'
+      const status = action === 'approve' ? 'confirmed' : 'cancelled';
+      await api.patch(`/bookings/${bookingId}/status`, { status });
+      await fetchBookings();
     },
-    [user, bookings]
+    [fetchBookings]
   );
 
   const fetchMaintenanceIssues = useCallback(async () => {
@@ -361,7 +394,17 @@ export const CampusProvider = ({ children }) => {
   const myBookings = useMemo(() => {
     const uid = user?._id || user?.id;
     if (!uid) return [];
-    return bookings.filter((b) => b.requestedBy?.id === uid);
+
+    // Debug logging
+    console.log('Filtering myBookings for uid:', uid, typeof uid);
+    if (bookings.length > 0) {
+      console.log('Sample booking requestedBy:', bookings[0].requestedBy);
+    }
+
+    return bookings.filter((b) => {
+      // Handle type mismatch (string vs number)
+      return String(b.requestedBy?.id) === String(uid);
+    });
   }, [bookings, user]);
 
   const myMaintenanceIssues = useMemo(() => {
@@ -399,6 +442,8 @@ export const CampusProvider = ({ children }) => {
 
     myBookings,
     myMaintenanceIssues,
+    fetchBookings,
+    fetchClassrooms, // Expose this too just in case
   };
 
   return <CampusContext.Provider value={value}>{children}</CampusContext.Provider>;

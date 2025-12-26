@@ -101,10 +101,10 @@ exports.createBooking = async (req, res, next) => {
       return res.status(409).json({ success: false, message: 'Classroom is already booked for this time period' });
     }
 
-    // Create booking
+    // Create booking (Default to pending so admin can approve)
     const ins = await db.query(
-      `INSERT INTO room_bookings(classroom_id, course_id, booked_by_user_id, title, description, start_time, end_time, booking_type, recurring_pattern, recurring_until)
-       VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+      `INSERT INTO room_bookings(classroom_id, course_id, booked_by_user_id, title, description, start_time, end_time, booking_type, recurring_pattern, recurring_until, status)
+       VALUES($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pending')
        RETURNING *`,
       [cid, courseId || null, userId, title || '', description || '', start, end, bookingType || 'course', recurringPattern || 'none', recurringUntil || '2099-12-31']
     );
@@ -229,6 +229,32 @@ exports.cancelBooking = async (req, res, next) => {
     );
 
     res.json({ success: true, data: mapBookingRow(q.rows[0]) });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// Update booking status (e.g. for approval)
+exports.updateBookingStatus = async (req, res, next) => {
+  try {
+    ensureRole(req, ['admin', 'staff']);
+    const bookingId = Number(req.params.bookingId);
+    const { status } = req.body;
+
+    if (!['pending', 'confirmed', 'cancelled', 'completed'].includes(status)) {
+      return res.status(400).json({ success: false, message: 'Invalid status' });
+    }
+
+    const upd = await db.query(
+      `UPDATE room_bookings SET status=$1, updated_at=CURRENT_TIMESTAMP WHERE id=$2 RETURNING *`,
+      [status, bookingId]
+    );
+
+    if (upd.rowCount === 0) {
+      return res.status(404).json({ success: false, message: 'Booking not found' });
+    }
+
+    res.json({ success: true, data: mapBookingRow(upd.rows[0]) });
   } catch (err) {
     next(err);
   }
