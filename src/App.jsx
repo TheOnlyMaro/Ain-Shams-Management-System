@@ -288,6 +288,15 @@ function App() {
                     />
 
                     <Route
+                      path="/messages"
+                      element={
+                        <ProtectedRoute>
+                          <MessagesPage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
                       path="/resources"
                       element={
                         <ProtectedRoute roles={['student']}>
