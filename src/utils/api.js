@@ -88,4 +88,28 @@ export const announcementApi = {
     apiClient.delete(`/announcements/${id}`),
 };
 
+export const quizApi = {
+  createQuiz: (data) =>
+    apiClient.post('/quizzes', data),
+  getQuizzesByCourse: (courseId) =>
+    apiClient.get(`/quizzes/course/${courseId}`),
+  getQuizDetails: (quizId) =>
+    apiClient.get(`/quizzes/${quizId}`),
+  startQuiz: (quizId) =>
+    apiClient.post(`/quizzes/${quizId}/start`),
+  submitQuiz: (quizId, answers) =>
+    apiClient.post(`/quizzes/${quizId}/submit`, { answers }),
+  getStudentResult: (quizId) =>
+    apiClient.get(`/quizzes/${quizId}/result`),
+};
+
+export const parentApi = {
+  connectChild: (data) =>
+    apiClient.post('/parents/connect', data),
+  getChildren: () =>
+    apiClient.get('/parents/children'),
+  getChildProgress: (studentId) =>
+    apiClient.get(`/parents/children/${studentId}/progress`),
+};
+
 export default apiClient;

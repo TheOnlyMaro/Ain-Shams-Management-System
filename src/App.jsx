@@ -20,6 +20,10 @@ import { CourseDetailPage } from './pages/curriculum/CourseDetailPage';
 import { AssignmentDetailPage } from './pages/curriculum/AssignmentDetailPage';
 import { GradesPage } from './pages/curriculum/GradesPage';
 import { StaffGradesPage } from './pages/curriculum/StaffGradesPage';
+import { StaffQuizzesPage } from './pages/curriculum/StaffQuizzesPage';
+import { StudentQuizzesPage } from './pages/curriculum/StudentQuizzesPage';
+import { QuizTakePage } from './pages/curriculum/QuizTakePage';
+import { ParentProgressPage } from './pages/parent/ParentProgressPage';
 
 import { AdmissionPage } from './pages/admission/AdmissionPage';
 
@@ -159,6 +163,42 @@ function App() {
                       element={
                         <ProtectedRoute roles={['staff']}>
                           <StaffGradesPage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/staff/quizzes"
+                      element={
+                        <ProtectedRoute roles={['staff', 'admin']}>
+                          <StaffQuizzesPage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/quizzes"
+                      element={
+                        <ProtectedRoute roles={['student']}>
+                          <StudentQuizzesPage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/quizzes/:quizId"
+                      element={
+                        <ProtectedRoute roles={['student']}>
+                          <QuizTakePage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/parent/progress"
+                      element={
+                        <ProtectedRoute roles={['parent']}>
+                          <ParentProgressPage />
                         </ProtectedRoute>
                       }
                     />

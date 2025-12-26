@@ -18,6 +18,7 @@ export const Navbar = () => {
     student: [
       { label: 'Dashboard', href: '/dashboard' },
       { label: 'Courses', href: '/courses' },
+      { label: 'Quizzes', href: '/quizzes' },
       { label: 'Grades', href: '/grades' },
       { label: 'Classrooms', href: '/classrooms' },
       { label: 'Events', href: '/events' },
@@ -40,6 +41,7 @@ export const Navbar = () => {
     staff: [
       { label: 'Dashboard', href: '/dashboard' },
       { label: 'Courses', href: '/staff/courses' },
+      { label: 'Quizzes', href: '/staff/quizzes' },
       { label: 'Grades', href: '/staff/grades' },
       { label: 'Payroll', href: '/staff/payroll' },
       { label: 'Classrooms', href: '/classrooms' },
@@ -52,6 +54,7 @@ export const Navbar = () => {
     ],
     parent: [
       { label: 'Dashboard', href: '/dashboard' },
+      { label: 'Student Progress', href: '/parent/progress' },
       { label: 'Courses', href: '/courses' },
       { label: 'Grades', href: '/grades' },
       { label: 'Events', href: '/events' },
