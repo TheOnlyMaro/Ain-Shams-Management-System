@@ -4,7 +4,7 @@ import { useAnnouncement } from '../context/AnnouncementContext';
 import { useCurriculum } from '../context/CurriculumContext';
 import { useAdmission } from '../context/AdmissionContext';
 import { Card, CardHeader, CardBody, CardFooter } from '../components/common';
-import { BookOpen, FileText, Bell, ClipboardList, TrendingUp, Users, Package } from 'lucide-react';
+import { BookOpen, FileText, Bell, ClipboardList, TrendingUp, Users, Package, ClipboardCheck } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatTimeAgo } from '../utils/dateUtils';
 
@@ -367,6 +367,13 @@ export const DashboardPage = () => {
           >
             <TrendingUp className="w-6 h-6 mx-auto mb-2 text-blue-600" />
             <p className="text-sm font-medium text-secondary-800">Grade Assignments</p>
+          </Link>
+          <Link
+            to="/staff/quizzes"
+            className="p-4 rounded-lg bg-indigo-50 hover:bg-indigo-100 transition text-center"
+          >
+            <ClipboardCheck className="w-6 h-6 mx-auto mb-2 text-indigo-600" />
+            <p className="text-sm font-medium text-secondary-800">Manage Quizzes</p>
           </Link>
           <Link
             to="/admin/announcements"
