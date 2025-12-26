@@ -34,6 +34,8 @@ async function main() {
         console.log('Test schema already initialized (fast-skip).');
         // Still attempt idempotent seeding in case rows are missing
         await trySeed(client);
+        // Ensure leave_requests exists in case schema was initialized before feature was added
+        await ensureLeaveTable(client);
         console.log('Test schema apply complete (skipped).');
         return;
       }
@@ -77,6 +79,28 @@ async function main() {
   } finally {
     client.release();
     await pool.end();
+  }
+}
+
+async function ensureLeaveTable(client) {
+  try {
+    await client.query(`CREATE TABLE IF NOT EXISTS test.leave_requests (
+      id SERIAL PRIMARY KEY,
+      user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+      start_date TIMESTAMP NOT NULL,
+      end_date TIMESTAMP NOT NULL,
+      leave_type VARCHAR(50) NOT NULL DEFAULT 'vacation',
+      reason TEXT NOT NULL DEFAULT '',
+      status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','denied','cancelled')),
+      approver_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+      approver_note TEXT NOT NULL DEFAULT '',
+      created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+      updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+    )`);
+    await client.query('CREATE INDEX IF NOT EXISTS idx_leave_requests_user_id ON test.leave_requests(user_id)');
+    await client.query('CREATE INDEX IF NOT EXISTS idx_leave_requests_status ON test.leave_requests(status)');
+  } catch (e) {
+    // ignore
   }
 }
 
