@@ -7,6 +7,7 @@ const courseController = require('../controllers-sql/courseController');
 const assignmentController = require('../controllers-sql/assignmentController');
 const validateRequest = require('../middleware/validateRequest');
 
+
 const router = express.Router();
 const materialsRoutes = require('./materialsRoutes');
 

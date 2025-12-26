@@ -5,6 +5,7 @@ const path = require('path');
 const applicationController = require('../controllers-sql/applicationController');
 const { authenticate, authorizeRole, optionalAuthenticate, rejectIfAuthenticated } = require('../middleware/authMiddleware');
 
+
 // Set up Multer for file uploads (same as before)
 const UPLOAD_DIR = path.join(__dirname, '..', 'uploads');
 const storage = multer.diskStorage({

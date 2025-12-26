@@ -1,5 +1,5 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+
 import { AuthProvider } from './context/AuthContext';
 import { CurriculumProvider } from './context/CurriculumContext';
 import { AdmissionProvider } from './context/AdmissionContext';
@@ -8,24 +8,23 @@ import { CampusProvider } from './context/CampusContext';
 import { Navbar } from './components/common';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
+// Public pages (NAMED exports)
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/auth/LoginPage';
 import { SignupPage } from './pages/auth/SignupPage';
-import { DashboardPage } from './pages/DashboardPage';
 
+// User pages (NAMED exports)
+import { DashboardPage } from './pages/DashboardPage';
 import { CoursesPage } from './pages/curriculum/CoursesPage';
 import { CourseDetailPage } from './pages/curriculum/CourseDetailPage';
 import { AssignmentsPage } from './pages/curriculum/AssignmentsPage';
 import { AssignmentDetailPage } from './pages/curriculum/AssignmentDetailPage';
 import { StaffAssignmentsPage } from './pages/curriculum/StaffAssignmentsPage';
 import { GradesPage } from './pages/curriculum/GradesPage';
-import { StaffGradesPage } from './pages/curriculum/StaffGradesPage';
-import { MaterialsPage } from './pages/curriculum/MaterialsPage';
 
 import { AdmissionPage } from './pages/admission/AdmissionPage';
 
-import { AnnouncementsPage } from './pages/community/AnnouncementsPage';
-
+// Admin pages (NAMED exports ✅)
 import { AdminApplicationsPage } from './pages/admin/AdminApplicationsPage';
 import { AdminCoursesPage } from './pages/admin/AdminCoursesPage';
 
@@ -39,29 +38,32 @@ import { PayrollPage } from './pages/campus/PayrollPage';
 import { ResearchHubPage } from './pages/campus/ResearchHubPage';
 import { PublishResearchPage } from './pages/campus/PublishResearchPage';
 
-export const App = () => {
+// Community pages (DEFAULT exports ✅)
+import MessagesPage from './pages/messages/MessagesPage';
+import EnhancedAnnouncementsPage from './pages/community/EnhancedAnnouncementsPage';
+
+function App() {
   return (
     <Router>
       <AuthProvider>
         <CurriculumProvider>
           <AdmissionProvider>
             <AnnouncementProvider>
-              <CampusProvider>
-                <div className="min-h-screen bg-gray-50">
-                  <Navbar />
-                  <Routes>
-                    <Route path="/" element={<HomePage />} />
-                    <Route path="/login" element={<LoginPage />} />
-                    <Route path="/signup" element={<SignupPage />} />
+              <div className="min-h-screen bg-gray-50">
+                <Navbar />
+                <Routes>
+                  <Route path="/" element={<HomePage />} />
+                  <Route path="/login" element={<LoginPage />} />
+                  <Route path="/signup" element={<SignupPage />} />
 
-                    <Route
-                      path="/dashboard"
-                      element={
-                        <ProtectedRoute>
-                          <DashboardPage />
-                        </ProtectedRoute>
-                      }
-                    />
+                  <Route
+                    path="/dashboard"
+                    element={
+                      <ProtectedRoute>
+                        <DashboardPage />
+                      </ProtectedRoute>
+                    }
+                  />
 
                     <Route
                       path="/courses"
@@ -108,43 +110,30 @@ export const App = () => {
                       }
                     />
 
-                    <Route
-                      path="/materials"
-                      element={
-                        <ProtectedRoute>
-                          <MaterialsPage />
-                        </ProtectedRoute>
-                      }
-                    />
+                  <Route
+                    path="/admission"
+                    element={
+                        <AdmissionPage />
+                    }
+                  />
 
-                    <Route path="/admission" element={<AdmissionPage />} />
+                  <Route
+                    path="/announcements"
+                    element={
+                      <ProtectedRoute>
+                        <AnnouncementsPage />
+                      </ProtectedRoute>
+                    }
+                  />
 
-                    <Route
-                      path="/announcements"
-                      element={
-                        <ProtectedRoute>
-                          <AnnouncementsPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    <Route
-                      path="/admin/announcements"
-                      element={
-                        <ProtectedRoute roles={['admin', 'staff']}>
-                          <AnnouncementsPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    <Route
-                      path="/admin/applications"
-                      element={
-                        <ProtectedRoute roles={['admin']}>
-                          <AdminApplicationsPage />
-                        </ProtectedRoute>
-                      }
-                    />
+                  <Route
+                    path="/admin/applications"
+                    element={
+                      <ProtectedRoute roles={['admin']}>
+                        <AdminApplicationsPage />
+                      </ProtectedRoute>
+                    }
+                  />
 
                     <Route
                       path="/admin/courses"
@@ -281,17 +270,16 @@ export const App = () => {
                       }
                     />
 
-                    <Route path="*" element={<Navigate to="/" replace />} />
-                  </Routes>
-                </div>
-              </CampusProvider>
+                  <Route path="*" element={<Navigate to="/" replace />} />
+                </Routes>
+              </div>
             </AnnouncementProvider>
           </AdmissionProvider>
         </CurriculumProvider>
       </AuthProvider>
     </Router>
   );
-};
+}
 
 export default App;
 

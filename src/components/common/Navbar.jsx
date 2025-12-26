@@ -25,6 +25,7 @@ export const Navbar = () => {
       { label: 'Events', href: '/events' },
       { label: 'Maintenance', href: '/maintenance' },
       { label: 'Research', href: '/research' },
+      { label: 'Messages', href: '/messages' }, 
       { label: 'Announcements', href: '/announcements' },
     ],
     admin: [
@@ -35,6 +36,7 @@ export const Navbar = () => {
       { label: 'Maintenance', href: '/admin/maintenance' },
       { label: 'Research', href: '/research' },
       { label: 'Events', href: '/events' },
+      { label: 'Messages', href: '/messages' },
       { label: 'Announcements', href: '/admin/announcements' },
     ],
     staff: [
@@ -49,6 +51,7 @@ export const Navbar = () => {
       { label: 'Maintenance', href: '/maintenance' },
       { label: 'Research', href: '/research' },
       { label: 'Events', href: '/events' },
+      { label: 'Messages', href: '/messages' },
       { label: 'Announcements', href: '/admin/announcements' },
     ],
     parent: [
@@ -58,6 +61,7 @@ export const Navbar = () => {
       { label: 'Grades', href: '/grades' },
       { label: 'Events', href: '/events' },
       { label: 'Research', href: '/research' },
+      { label: 'Messages', href: '/messages' },
       { label: 'Announcements', href: '/announcements' },
     ],
   };
