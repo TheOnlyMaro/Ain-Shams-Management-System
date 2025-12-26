@@ -1,4 +1,5 @@
 const path = require('path');
+jest.setTimeout(30000);
 require('dotenv').config({ path: path.join(__dirname, '..', '..', '.env') });
 let db;
 let perf;

@@ -29,6 +29,7 @@ import { AdmissionPage } from './pages/admission/AdmissionPage';
 // Admin pages (NAMED exports ✅)
 import { AdminApplicationsPage } from './pages/admin/AdminApplicationsPage';
 import { AdminCoursesPage } from './pages/admin/AdminCoursesPage';
+import { PayrunsPage } from './pages/admin/PayrunsPage';
 
 import { ClassroomsPage } from './pages/campus/ClassroomsPage';
 import { MyBookingsPage } from './pages/campus/MyBookingsPage';
@@ -154,6 +155,15 @@ function App() {
                       element={
                         <ProtectedRoute roles={['admin']}>
                           <AdminCoursesPage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/admin/payrolls"
+                      element={
+                        <ProtectedRoute roles={['admin','staff']}>
+                          <PayrunsPage />
                         </ProtectedRoute>
                       }
                     />
