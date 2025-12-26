@@ -58,6 +58,22 @@ async function main() {
       console.log('resource_types already contains entries; skipping seed.');
     }
   }
+
+  // Seed eav attributes for resources (boolean + optional datetimes)
+  try {
+    console.log('Ensuring resource EAV attributes (isSoftware, purchaseDate, warrantyUntil) exist...');
+    await pool.query(`
+      INSERT INTO eav_attributes (entity_type, attribute_name, data_type, is_searchable)
+      VALUES
+        ('resource', 'isSoftware', 'boolean', FALSE),
+        ('resource', 'purchaseDate', 'datetime', FALSE),
+        ('resource', 'warrantyUntil', 'datetime', FALSE)
+      ON CONFLICT (entity_type, attribute_name) DO NOTHING;
+    `);
+    console.log('resource EAV attributes ensured.');
+  } catch (err) {
+    console.log('Could not seed resource EAV attributes (table may not exist yet):', err.message);
+  }
 }
 
 main().catch((err) => {
