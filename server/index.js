@@ -11,7 +11,17 @@ dotenv.config({ path: path.join(__dirname, '..', '.env') });
 
 const authRoutes = require('./routes/authRoutes');
 const courseRoutes = require('./routes/courseRoutes');
+const assignmentRoutes = require('./routes/assignmentRoutes');
+const gradeRoutes = require('./routes/gradeRoutes');
+const classroomRoutes = require('./routes/classroomRoutes');
 const applicationRoutes = require('./routes/applicationRoutes');
+const announcementRoutes = require('./routes/announcementRoutes');
+const quizRoutes = require('./routes/quizRoutes');
+const parentRoutes = require('./routes/parentRoutes');
+const maintenanceRoutes = require('./routes/maintenanceRoutes');
+const bookingRoutes = require('./routes/bookingRoutes');
+const resourceRoutes = require('./routes/resourceRoutes');
+const allocationRoutes = require('./routes/allocationRoutes');
 
 const PORT = process.env.PORT || 4000;
 // Legacy Mongo URI retained for rollback; not used in SQL mode
@@ -36,7 +46,17 @@ app.use('/uploads', express.static(UPLOAD_DIR));
 // Mount routes
 app.use('/api/auth', authRoutes);
 app.use('/api/curriculum', courseRoutes);
+app.use('/api/curriculum', assignmentRoutes);
+app.use('/api/curriculum', gradeRoutes);
+app.use('/api/classrooms', classroomRoutes);
 app.use('/api/applications', applicationRoutes);
+app.use('/api/announcements', announcementRoutes);
+app.use('/api/quizzes', quizRoutes);
+app.use('/api/parents', parentRoutes);
+app.use('/api/maintenance', maintenanceRoutes);
+app.use('/api/bookings', bookingRoutes);
+app.use('/api/resources', resourceRoutes);
+app.use('/api/allocations', allocationRoutes);
 app.get('/', (req, res) => res.send('API running'));
 
 app.listen(PORT, () => {

@@ -33,12 +33,25 @@ async function ensureRoles() {
   return r.rows.map(x => x.name);
 }
 
+async function ensureResourceTypes() {
+  const types = ['Laptop','Projector','Software License','Lab Equipment','Tablet'];
+  for (const t of types) {
+    await query('INSERT INTO resource_types(name, description) VALUES ($1,$2) ON CONFLICT (name) DO NOTHING', [t, '']);
+  }
+  const r = await query('SELECT name FROM resource_types ORDER BY id');
+  return r.rows.map(x => x.name);
+}
+
 async function checkTables() {
   const names = [
     'roles','users','courses','assignments','grades','course_enrollments','course_materials',
     'course_tags','tags','applications','application_documents','application_activity_logs',
     'application_notifications','refresh_tokens','eav_attributes','eav_values'
   ];
+  // Add new resource subsystem tables
+  names.push('resource_types');
+  names.push('resources');
+  names.push('resource_allocations');
   const out = {};
   for (const n of names) {
     const r = await query("SELECT to_regclass('public." + n + "') AS exists");
@@ -58,6 +71,10 @@ async function checkEav() {
     ['application','custom_field_1'],
     ['lms_integration','canvas_api_key'],
     ['lms_integration','blackboard_config'],
+    // Resource attributes
+    ['resource','isSoftware'],
+    ['resource','purchaseDate'],
+    ['resource','warrantyUntil'],
   ];
   const results = {};
   for (const [entity, attr] of keys) {
@@ -78,6 +95,10 @@ async function main() {
   console.log('Ensuring default roles exist...');
   const roles = await ensureRoles();
   console.log('Roles:', roles.join(', '));
+
+  console.log('Ensuring default resource types exist...');
+  const rtypes = await ensureResourceTypes();
+  console.log('Resource types:', rtypes.join(', '));
 
   console.log('Checking tables and view...');
   const tables = await checkTables();
