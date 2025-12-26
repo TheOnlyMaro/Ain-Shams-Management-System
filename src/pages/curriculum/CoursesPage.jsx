@@ -1,6 +1,6 @@
 import React, { useState, useMemo } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Filter, Users, Clock, BookOpen, BarChart3, Plus } from 'lucide-react';
+import { Users, Clock, BookOpen, BarChart3, Plus } from 'lucide-react';
 import { useCurriculum } from '../../context/CurriculumContext';
 import { useAuth } from '../../context/AuthContext';
 import { Card, CardBody, Button, FormInput } from '../../components/common';
