@@ -19,13 +19,13 @@ export const PublishResearchPage = () => {
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
     setError(null);
     setSuccess(null);
 
     try {
-      publishResearch({
+      await publishResearch({
         title: form.title,
         abstract: form.abstract,
         authors: form.authors
@@ -40,7 +40,7 @@ export const PublishResearchPage = () => {
       setSuccess('Research published successfully.');
       setTimeout(() => navigate('/research'), 800);
     } catch (err) {
-      setError(err?.message || 'Failed to publish');
+      setError(err?.response?.data?.message || err?.message || 'Failed to publish');
     }
   };
 
@@ -50,7 +50,7 @@ export const PublishResearchPage = () => {
         <div className="flex items-start justify-between gap-4 mb-8">
           <div>
             <h1 className="text-4xl font-bold text-secondary-900">Publish Research</h1>
-            <p className="text-secondary-600 mt-2">Create a publication entry (front-end only)</p>
+            <p className="text-secondary-600 mt-2">Create a new academic publication</p>
           </div>
           <Link to="/research" className="text-primary-600 hover:text-primary-700 font-medium">
             Back to Research →
@@ -59,9 +59,8 @@ export const PublishResearchPage = () => {
 
         {(error || success) && (
           <div
-            className={`mb-6 p-3 rounded-lg border ${
-              error ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-700'
-            }`}
+            className={`mb-6 p-3 rounded-lg border ${error ? 'bg-red-50 border-red-200 text-red-700' : 'bg-green-50 border-green-200 text-green-700'
+              }`}
           >
             <div className="flex items-center gap-2">
               {error ? <AlertTriangle className="w-5 h-5" /> : <CheckCircle2 className="w-5 h-5" />}

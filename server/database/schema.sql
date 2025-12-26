@@ -431,10 +431,40 @@ FROM eav_values v
 JOIN eav_attributes a ON a.id = v.attribute_id
 WHERE v.entity_type = 'course';
 
+-- TABLE: research
+CREATE TABLE research (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  abstract TEXT NOT NULL,
+  author_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  author_name VARCHAR(255) NOT NULL,
+  category VARCHAR(100) NOT NULL DEFAULT 'general',
+  publication_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  status VARCHAR(50) NOT NULL DEFAULT 'published' CHECK (status IN ('draft', 'published', 'archived')),
+  file_url VARCHAR(500) NOT NULL DEFAULT '',
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_research_author_id ON research(author_id);
+CREATE INDEX idx_research_status ON research(status);
+CREATE INDEX idx_research_category ON research(category);
+
+-- TABLE: research_tags
+CREATE TABLE research_tags (
+  id SERIAL PRIMARY KEY,
+  research_id INTEGER NOT NULL REFERENCES research(id) ON DELETE CASCADE,
+  tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE RESTRICT,
+  UNIQUE(research_id, tag_id)
+);
+
+CREATE INDEX idx_research_tags_research_id ON research_tags(research_id);
+
 -- ============================================================================
 -- SUMMARY
 -- ============================================================================
--- 19 tables total
+-- 21 tables total
 -- All fields NOT NULL with sensible defaults
 -- Single role per user (role_id in users table)
 -- staffType moved to EAV (entity_type='user', attribute_name='staffType')
