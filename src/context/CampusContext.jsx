@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from './AuthContext';
-import api from '../utils/api';
+import api, { payrollApi } from '../utils/api';
 
 export const CampusContext = createContext();
 
@@ -412,6 +412,60 @@ export const CampusProvider = ({ children }) => {
     [setPayrollRecords]
   );
 
+    const fetchPayrollsFromServer = useCallback(async () => {
+      try {
+        const res = await payrollApi.getPayruns();
+        if (!res || !res.data || !res.data.success) return;
+        const runs = res.data.data || [];
+        const records = [];
+        for (const run of runs) {
+          // fetch entries for each run
+          try {
+            const rr = await payrollApi.getPayrun(run.id);
+            if (!rr || !rr.data || !rr.data.success) continue;
+            const runData = rr.data.data;
+            const entries = runData.entries || [];
+            for (const e of entries) {
+              const gross = Number(e.gross_amount || 0);
+              const net = Number(e.net_amount || gross);
+              records.push({
+                id: e.id,
+                staffId: e.user_id,
+                periodStart: run.period_start,
+                periodEnd: run.period_end,
+                gross,
+                deductions: gross - net,
+                net,
+                status: e.status || run.status,
+                paidAt: run.status === 'paid' ? run.updated_at : null,
+              });
+            }
+          } catch (err) {
+            // ignore per-run errors
+          }
+        }
+        if (records.length) setPayrollRecords(records);
+      } catch (err) {
+        console.error('Failed to fetch payrolls from server', err);
+      }
+    }, []);
+
+    useEffect(() => {
+      if (!user) return;
+      // Only fetch payrolls for staff/admin users; otherwise keep local student view
+      const role = user?.role || user?.roleId;
+      // assume role strings available on user.role
+      if (role === 'staff' || role === 'admin' || user?.isStaff) {
+        fetchPayrollsFromServer().catch(() => {
+          // fallback: ensure some seeded data exists for UI
+          seedPayrollForStaffIfNeeded(user._id || user.id);
+        });
+      } else {
+        // non-staff users: seed local demo payrolls for their own view
+        seedPayrollForStaffIfNeeded(user._id || user.id);
+      }
+    }, [user, fetchPayrollsFromServer, seedPayrollForStaffIfNeeded]);
+
   const publishResearch = useCallback(
     async ({ title, abstract, authors, keywords }) => {
       if (!user) throw new Error('You must be logged in');
@@ -481,6 +535,7 @@ export const CampusProvider = ({ children }) => {
 
     seedPayrollForStaffIfNeeded,
     getPayrollForStaff,
+    fetchPayrollsFromServer,
 
     publishResearch,
 

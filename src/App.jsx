@@ -39,6 +39,7 @@ import { AdminMaintenancePage } from './pages/campus/AdminMaintenancePage';
 import { PayrollPage } from './pages/campus/PayrollPage';
 import { ResearchHubPage } from './pages/campus/ResearchHubPage';
 import { PublishResearchPage } from './pages/campus/PublishResearchPage';
+import { PerformancePage } from './pages/staff/PerformancePage';
 
 // Community pages (DEFAULT exports ✅)
 import MessagesPage from './pages/messages/MessagesPage';
@@ -207,6 +208,15 @@ function App() {
                       element={
                         <ProtectedRoute roles={['staff']}>
                           <PayrollPage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/staff/performance"
+                      element={
+                        <ProtectedRoute roles={['staff']}>
+                          <PerformancePage />
                         </ProtectedRoute>
                       }
                     />

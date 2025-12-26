@@ -88,4 +88,23 @@ export const announcementApi = {
     apiClient.delete(`/announcements/${id}`),
 };
 
+export const payrollApi = {
+  // List payruns
+  getPayruns: () => apiClient.get('/payrolls'),
+  getPayrun: (id) => apiClient.get(`/payrolls/${id}`),
+  createPayrun: (data) => apiClient.post('/payrolls', data),
+  addEntry: (payrunId, data) => apiClient.post(`/payrolls/${payrunId}/entries`, data),
+  addComponent: (entryId, data) => apiClient.post(`/payrolls/entries/${entryId}/components`, data),
+  finalize: (payrunId) => apiClient.patch(`/payrolls/${payrunId}/finalize`),
+};
+
+export const performanceApi = {
+  listReviews: (params) => apiClient.get('/performance', { params }),
+  getReview: (id) => apiClient.get(`/performance/${id}`),
+  createReview: (data) => apiClient.post('/performance', data),
+  addGoal: (reviewId, data) => apiClient.post(`/performance/${reviewId}/goals`, data),
+  addFeedback: (reviewId, data) => apiClient.post(`/performance/${reviewId}/feedback`, data),
+  updateReview: (id, data) => apiClient.patch(`/performance/${id}`, data),
+};
+
 export default apiClient;
