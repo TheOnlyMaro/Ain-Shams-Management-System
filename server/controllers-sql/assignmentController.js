@@ -38,9 +38,9 @@ exports.listAssignments = async (req, res, next) => {
     const { courseId } = req.query || {};
     if (courseId) {
       const cid = Number(courseId);
-      if (!Number.isInteger(cid)) 
+      if (!Number.isInteger(cid))
         return res.status(400).json({ success: false, message: 'Invalid courseId' });
-     
+
       const q = await db.query('SELECT * FROM assignments WHERE course_id=$1 ORDER BY due_date ASC', [cid]);
       return res.json({ success: true, data: q.rows.map(mapAssignmentRow) });
     }
@@ -67,20 +67,31 @@ exports.createAssignment = async (req, res, next) => {
     if (!errors.isEmpty()) return res.status(400).json({ success: false, errors: errors.array() });
 
     const { courseId, title, description, dueDate, totalPoints } = req.body || {};
+    console.log('[assignmentController] creating assignment:', { courseId, title, dueDate, totalPoints });
     const cid = Number(courseId);
-    if (!Number.isInteger(cid)) return res.status(400).json({ success: false, message: 'Invalid course id' });
+    if (!Number.isInteger(cid)) {
+      console.warn('[assignmentController] invalid course id:', courseId);
+      return res.status(400).json({ success: false, message: 'Invalid course id' });
+    }
 
     // ensure course exists
     const course = await db.query('SELECT 1 FROM courses WHERE id=$1', [cid]);
-    if (!course.rowCount) return res.status(404).json({ success: false, message: 'Course not found' });
+    if (!course.rowCount) {
+      console.warn('[assignmentController] course not found:', cid);
+      return res.status(404).json({ success: false, message: 'Course not found' });
+    }
 
     const ins = await db.query(
       `INSERT INTO assignments(course_id, title, description, due_date, total_points)
        VALUES($1,$2,$3,$4,$5) RETURNING *`,
       [cid, title, description || '', dueDate, Number(totalPoints) || 0]
     );
+    console.log('[assignmentController] assignment created:', ins.rows[0].id);
     res.status(201).json({ success: true, data: mapAssignmentRow(ins.rows[0]) });
-  } catch (err) { next(err); }
+  } catch (err) {
+    console.error('[assignmentController] create error:', err);
+    next(err);
+  }
 };
 
 exports.updateAssignment = async (req, res, next) => {
@@ -146,13 +157,13 @@ exports.gradeAssignment = async (req, res, next) => {
     const id = Number(req.params.assignmentId);
     const { studentId, points, feedback } = req.body || {};
     const sid = Number(studentId);
-    if (!Number.isInteger(id) || !Number.isInteger(sid)) 
-        return res.status(400).json({ success: false, message: 'Invalid ids' });
+    if (!Number.isInteger(id) || !Number.isInteger(sid))
+      return res.status(400).json({ success: false, message: 'Invalid ids' });
 
     // ensure assignment exists
     const a = await db.query('SELECT * FROM assignments WHERE id=$1', [id]);
-    if (!a.rowCount) 
-        return res.status(404).json({ success: false, message: 'Assignment not found' });
+    if (!a.rowCount)
+      return res.status(404).json({ success: false, message: 'Assignment not found' });
 
     const pts = Number(points) || 0;
     const gr = await db.query(

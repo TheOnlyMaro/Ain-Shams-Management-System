@@ -198,6 +198,29 @@ export const CampusProvider = ({ children }) => {
     fetchBookings();
   }, [fetchBookings]);
 
+  const fetchEvents = useCallback(async () => {
+    try {
+      const res = await api.get('/announcements/events');
+      if (res.data.success) {
+        // Map backend format (start_date, end_date) to frontend format (date, time)
+        const mapped = res.data.data.map(e => ({
+          ...e,
+          date: e.startDate || e.date,
+          time: e.startDate ? new Date(e.startDate).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : e.time
+        }));
+        setEvents(mapped);
+      }
+    } catch (err) {
+      console.error('Failed to fetch events', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchEvents();
+    }
+  }, [user, fetchEvents]);
+
   const hasConflict = useCallback(
     ({ classroomId, date, startTime, endTime, ignoreBookingId = null }) => {
       // This is a client-side check for immediate feedback, but the server handles race conditions.

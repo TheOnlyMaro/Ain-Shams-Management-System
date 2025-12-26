@@ -1,5 +1,6 @@
 import React, { createContext, useState, useCallback, useEffect } from 'react';
 import axios from 'axios';
+import api from '../utils/api';
 import { useAuth } from './AuthContext';
 
 export const CurriculumContext = createContext();
@@ -275,7 +276,7 @@ export const CurriculumProvider = ({ children }) => {
     async (courseId, materialData) => {
       try {
         const courseIdNum = typeof courseId === 'string' ? parseInt(courseId, 10) : courseId;
-        
+
         // Generate a fileUrl - backend requires a non-empty string
         let fileUrl = materialData.fileUrl;
         if (!fileUrl || fileUrl === null) {
@@ -289,7 +290,7 @@ export const CurriculumProvider = ({ children }) => {
             fileUrl = `/uploads/materials/placeholder_${Date.now()}.txt`;
           }
         }
-        
+
         // Ensure fileUrl is a string (not null or undefined)
         fileUrl = String(fileUrl || '').trim();
         if (!fileUrl) {
@@ -303,7 +304,7 @@ export const CurriculumProvider = ({ children }) => {
           fileSize: String(materialData.fileSize || '').trim(),
           description: String(materialData.description || '').trim(),
         };
-        
+
         console.log('Uploading material:', {
           courseId: courseId,
           courseIdNum: courseIdNum,
@@ -311,12 +312,12 @@ export const CurriculumProvider = ({ children }) => {
           url: `${API_URL}/curriculum/courses/${courseIdNum}/materials`,
           payload
         });
-        
+
         // Ensure courseIdNum is a valid integer
         if (!Number.isInteger(courseIdNum) || courseIdNum <= 0) {
           throw new Error(`Invalid course ID: ${courseId} (parsed as ${courseIdNum})`);
         }
-        
+
         const res = await axios.post(
           `${API_URL}/curriculum/courses/${courseIdNum}/materials`,
           payload,
@@ -425,6 +426,26 @@ export const CurriculumProvider = ({ children }) => {
     [API_URL, getAuthHeaders, materials, courses]
   );
 
+  const fetchAssignments = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_URL}/curriculum/assignments`, {
+        headers: getAuthHeaders(),
+      });
+      if (res.data.success) {
+        setAssignments(res.data.data);
+      }
+    } catch (err) {
+      console.error('Error fetching assignments:', err);
+    }
+  }, [API_URL, getAuthHeaders]);
+
+  // Fetch assignments after courses are loaded
+  useEffect(() => {
+    if (user) {
+      fetchAssignments();
+    }
+  }, [user, fetchAssignments]);
+
   const getAssignments = useCallback(() => assignments, [assignments]);
 
   const getAssignmentsByCourse = useCallback(
@@ -438,50 +459,92 @@ export const CurriculumProvider = ({ children }) => {
   );
 
   const createAssignment = useCallback(
-    (assignmentData) => {
-      const course = courses.find((c) => String(c.id) === String(assignmentData.courseId));
-      const newAssignment = {
-        id: `assignment_${Date.now()}`,
-        courseId: assignmentData.courseId,
-        courseName: course?.name || assignmentData.courseName,
-        title: assignmentData.title,
-        description: assignmentData.description || '',
-        dueDate: assignmentData.dueDate,
-        totalPoints: Number(assignmentData.totalPoints || 100),
-        submitted: false,
-        submittedAt: null,
-        createdAt: new Date().toISOString(),
-        createdBy: user?.name || 'Staff',
-      };
-      setAssignments((prev) => [newAssignment, ...prev]);
-      return newAssignment;
+    async (assignmentData) => {
+      try {
+        const payload = {
+          courseId: Number(assignmentData.courseId),
+          title: assignmentData.title,
+          description: assignmentData.description || '',
+          dueDate: assignmentData.dueDate,
+          totalPoints: Number(assignmentData.totalPoints || 100),
+        };
+        console.log('[CurriculumContext] creating assignment:', payload);
+        const res = await api.post('/curriculum/assignments', payload);
+        console.log('[CurriculumContext] create assignment response:', res.data);
+        if (res.data.success) {
+          const newAssignment = res.data.data;
+          setAssignments((prev) => [newAssignment, ...prev]);
+          return newAssignment;
+        }
+      } catch (err) {
+        console.error('Error creating assignment:', err);
+        console.error('Error details:', err.response?.data);
+        throw err;
+      }
     },
-    [courses, user]
+    []
   );
 
-  const updateAssignment = useCallback((assignmentId, patch) => {
-    setAssignments((prev) => prev.map((a) => (a.id === assignmentId ? { ...a, ...patch } : a)));
-  }, []);
+  const updateAssignment = useCallback(async (assignmentId, patch) => {
+    try {
+      const id = typeof assignmentId === 'string' ? parseInt(assignmentId, 10) : assignmentId;
+      const res = await axios.patch(`${API_URL}/curriculum/assignments/${id}`, patch, {
+        headers: getAuthHeaders(),
+      });
+      if (res.data.success) {
+        setAssignments((prev) => prev.map((a) => (a.id === id ? res.data.data : a)));
+        return res.data.data;
+      }
+    } catch (err) {
+      console.error('Error updating assignment:', err);
+      throw err;
+    }
+  }, [API_URL, getAuthHeaders]);
 
-  const deleteAssignment = useCallback((assignmentId) => {
-    setAssignments((prev) => prev.filter((a) => a.id !== assignmentId));
-    setGrades((prev) => prev.filter((g) => g.assignmentId !== assignmentId));
-  }, []);
+  const deleteAssignment = useCallback(async (assignmentId) => {
+    try {
+      const id = typeof assignmentId === 'string' ? parseInt(assignmentId, 10) : assignmentId;
+      await axios.delete(`${API_URL}/curriculum/assignments/${id}`, {
+        headers: getAuthHeaders(),
+      });
+      setAssignments((prev) => prev.filter((a) => a.id !== id));
+      setGrades((prev) => prev.filter((g) => g.assignmentId !== id));
+    } catch (err) {
+      console.error('Error deleting assignment:', err);
+      throw err;
+    }
+  }, [API_URL, getAuthHeaders]);
 
-  const submitAssignment = useCallback((assignmentId, submissionData) => {
-    setAssignments((prev) =>
-      prev.map((assignment) =>
-        assignment.id === assignmentId
-          ? {
-              ...assignment,
-              submitted: true,
-              submittedAt: new Date().toISOString(),
-              submission: submissionData || null,
-            }
-          : assignment
-      )
-    );
-  }, []);
+  const submitAssignment = useCallback(async (assignmentId, submissionData) => {
+    try {
+      if (!user) return;
+      const id = typeof assignmentId === 'string' ? parseInt(assignmentId, 10) : assignmentId;
+      const studentId = user.id || user._id;
+
+      const res = await axios.post(
+        `${API_URL}/curriculum/assignments/${id}/submit`,
+        { studentId: Number(studentId) },
+        { headers: getAuthHeaders() }
+      );
+
+      if (res.data.success) {
+        setAssignments((prev) =>
+          prev.map((assignment) =>
+            assignment.id === id
+              ? {
+                ...assignment,
+                submitted: true,
+                submittedAt: new Date().toISOString(),
+              }
+              : assignment
+          )
+        );
+      }
+    } catch (err) {
+      console.error('Error submitting assignment:', err);
+      throw err;
+    }
+  }, [API_URL, getAuthHeaders, user]);
 
   const getGrades = useCallback(() => grades, [grades]);
 
@@ -498,7 +561,7 @@ export const CurriculumProvider = ({ children }) => {
       try {
         const assignmentIdNum = typeof assignmentId === 'string' ? parseInt(assignmentId, 10) : assignmentId;
         const courseIdNum = typeof gradeData.courseId === 'string' ? parseInt(gradeData.courseId, 10) : gradeData.courseId;
-        const studentIdNum = gradeData.studentId 
+        const studentIdNum = gradeData.studentId
           ? (typeof gradeData.studentId === 'string' ? parseInt(gradeData.studentId, 10) : gradeData.studentId)
           : null;
 

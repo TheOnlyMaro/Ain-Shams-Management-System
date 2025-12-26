@@ -21,6 +21,8 @@ import { AssignmentsPage } from './pages/curriculum/AssignmentsPage';
 import { AssignmentDetailPage } from './pages/curriculum/AssignmentDetailPage';
 import { StaffAssignmentsPage } from './pages/curriculum/StaffAssignmentsPage';
 import { GradesPage } from './pages/curriculum/GradesPage';
+import { StaffGradesPage } from './pages/curriculum/StaffGradesPage';
+import { MaterialsPage } from './pages/curriculum/MaterialsPage';
 
 import { AdmissionPage } from './pages/admission/AdmissionPage';
 
@@ -41,6 +43,7 @@ import { PublishResearchPage } from './pages/campus/PublishResearchPage';
 // Community pages (DEFAULT exports ✅)
 import MessagesPage from './pages/messages/MessagesPage';
 import EnhancedAnnouncementsPage from './pages/community/EnhancedAnnouncementsPage';
+import { AnnouncementsPage } from './pages/community/AnnouncementsPage';
 
 function App() {
   return (
@@ -49,21 +52,22 @@ function App() {
         <CurriculumProvider>
           <AdmissionProvider>
             <AnnouncementProvider>
-              <div className="min-h-screen bg-gray-50">
-                <Navbar />
-                <Routes>
-                  <Route path="/" element={<HomePage />} />
-                  <Route path="/login" element={<LoginPage />} />
-                  <Route path="/signup" element={<SignupPage />} />
+              <CampusProvider>
+                <div className="min-h-screen bg-gray-50">
+                  <Navbar />
+                  <Routes>
+                    <Route path="/" element={<HomePage />} />
+                    <Route path="/login" element={<LoginPage />} />
+                    <Route path="/signup" element={<SignupPage />} />
 
-                  <Route
-                    path="/dashboard"
-                    element={
-                      <ProtectedRoute>
-                        <DashboardPage />
-                      </ProtectedRoute>
-                    }
-                  />
+                    <Route
+                      path="/dashboard"
+                      element={
+                        <ProtectedRoute>
+                          <DashboardPage />
+                        </ProtectedRoute>
+                      }
+                    />
 
                     <Route
                       path="/courses"
@@ -110,30 +114,30 @@ function App() {
                       }
                     />
 
-                  <Route
-                    path="/admission"
-                    element={
+                    <Route
+                      path="/admission"
+                      element={
                         <AdmissionPage />
-                    }
-                  />
+                      }
+                    />
 
-                  <Route
-                    path="/announcements"
-                    element={
-                      <ProtectedRoute>
-                        <AnnouncementsPage />
-                      </ProtectedRoute>
-                    }
-                  />
+                    <Route
+                      path="/announcements"
+                      element={
+                        <ProtectedRoute>
+                          <AnnouncementsPage />
+                        </ProtectedRoute>
+                      }
+                    />
 
-                  <Route
-                    path="/admin/applications"
-                    element={
-                      <ProtectedRoute roles={['admin']}>
-                        <AdminApplicationsPage />
-                      </ProtectedRoute>
-                    }
-                  />
+                    <Route
+                      path="/admin/applications"
+                      element={
+                        <ProtectedRoute roles={['admin']}>
+                          <AdminApplicationsPage />
+                        </ProtectedRoute>
+                      }
+                    />
 
                     <Route
                       path="/admin/courses"
@@ -270,14 +274,15 @@ function App() {
                       }
                     />
 
-                  <Route path="*" element={<Navigate to="/" replace />} />
-                </Routes>
-              </div>
+                    <Route path="*" element={<Navigate to="/" replace />} />
+                  </Routes>
+                </div>
+              </CampusProvider>
             </AnnouncementProvider>
           </AdmissionProvider>
         </CurriculumProvider>
       </AuthProvider>
-    </Router>
+    </Router >
   );
 }
 
