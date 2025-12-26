@@ -472,3 +472,46 @@ CREATE INDEX idx_research_tags_research_id ON research_tags(research_id);
 -- Embedded documents → separate relational tables
 -- Core entities (users, courses, assignments, grades, applications, classrooms) = relational only
 -- Typed EAV for dynamic/optional metadata only; course metadata exposed via vw_course_metadata
+
+-- ============================================================================
+-- PAYROLLS (HR)
+-- ============================================================================
+-- Track payroll runs, individual payroll entries per employee, and components (earnings/deductions)
+CREATE TABLE IF NOT EXISTS payroll_runs (
+  id SERIAL PRIMARY KEY,
+  period_start DATE NOT NULL,
+  period_end DATE NOT NULL,
+  status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','processing','finalized','paid','cancelled')),
+  notes TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS payroll_entries (
+  id SERIAL PRIMARY KEY,
+  payroll_run_id INTEGER NOT NULL REFERENCES payroll_runs(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  gross_amount DECIMAL(19,4) NOT NULL DEFAULT 0,
+  net_amount DECIMAL(19,4) NOT NULL DEFAULT 0,
+  status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','paid','adjusted')),
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(payroll_run_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS payroll_components (
+  id SERIAL PRIMARY KEY,
+  payroll_entry_id INTEGER NOT NULL REFERENCES payroll_entries(id) ON DELETE CASCADE,
+  component_type VARCHAR(100) NOT NULL, -- e.g., 'base_salary','bonus','tax','pension'
+  amount DECIMAL(19,4) NOT NULL DEFAULT 0,
+  taxable BOOLEAN NOT NULL DEFAULT TRUE,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_payroll_runs_period ON payroll_runs(period_start, period_end);
+CREATE INDEX IF NOT EXISTS idx_payroll_entries_run_id ON payroll_entries(payroll_run_id);
+CREATE INDEX IF NOT EXISTS idx_payroll_entries_user_id ON payroll_entries(user_id);
+CREATE INDEX IF NOT EXISTS idx_payroll_components_entry_id ON payroll_components(payroll_entry_id);

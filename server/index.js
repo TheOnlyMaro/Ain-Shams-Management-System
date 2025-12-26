@@ -23,6 +23,8 @@ const bookingRoutes = require('./routes/bookingRoutes');
 const resourceRoutes = require('./routes/resourceRoutes');
 const allocationRoutes = require('./routes/allocationRoutes');
 const eventsRoutes = require('./routes/eventsRoutes');
+const payrollRoutes = require('./routes/payrollRoutes');
+const performanceRoutes = require('./routes/performanceRoutes');
 const researchRoutes = require('./routes/researchRoutes');
 
 const PORT = process.env.PORT || 4000;
@@ -60,6 +62,8 @@ app.use('/api/bookings', bookingRoutes);
 app.use('/api/resources', resourceRoutes);
 app.use('/api/allocations', allocationRoutes);
 app.use('/api/events', eventsRoutes);
+app.use('/api/payrolls', payrollRoutes);
+app.use('/api/performance', performanceRoutes);
 app.use('/api/research', researchRoutes);
 app.get('/', (req, res) => res.send('API running'));
 
