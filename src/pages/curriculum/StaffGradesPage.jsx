@@ -36,13 +36,18 @@ export const StaffGradesPage = () => {
     [assignments, form.assignmentId]
   );
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     setError(null);
 
     const assignment = selectedAssignment;
     if (!assignment) {
       setError('Please choose an assignment');
+      return;
+    }
+
+    if (!form.studentId || !form.studentId.trim()) {
+      setError('Student ID is required');
       return;
     }
 
@@ -53,27 +58,36 @@ export const StaffGradesPage = () => {
       return;
     }
 
-    addGrade(assignment.id, {
-      courseId: assignment.courseId,
-      courseName: assignment.courseName,
-      assignmentTitle: assignment.title,
-      studentId: form.studentId || null,
-      studentName: form.studentName || null,
-      points,
-      totalPoints: total,
-      feedback: form.feedback,
-    });
+    if (points > total) {
+      setError(`Points cannot exceed total points (${total})`);
+      return;
+    }
 
-    setForm({
-      courseId: '',
-      assignmentId: '',
-      studentId: '',
-      studentName: '',
-      points: '',
-      totalPoints: '',
-      feedback: '',
-    });
-    setShowAdd(false);
+    try {
+      await addGrade(assignment.id, {
+        courseId: assignment.courseId,
+        courseName: assignment.courseName,
+        assignmentTitle: assignment.title,
+        studentId: form.studentId.trim(),
+        studentName: form.studentName || null,
+        points,
+        totalPoints: total,
+        feedback: form.feedback,
+      });
+
+      setForm({
+        courseId: '',
+        assignmentId: '',
+        studentId: '',
+        studentName: '',
+        points: '',
+        totalPoints: '',
+        feedback: '',
+      });
+      setShowAdd(false);
+    } catch (err) {
+      setError(err.response?.data?.message || err.message || 'Failed to save grade');
+    }
   };
 
   return (
@@ -188,11 +202,12 @@ export const StaffGradesPage = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <FormInput
-                label="Student ID (optional)"
+                label="Student ID"
                 name="studentId"
-                placeholder="e.g., 64f..."
+                placeholder="e.g., 1, 2, 3..."
                 value={form.studentId}
                 onChange={(e) => setForm((p) => ({ ...p, studentId: e.target.value }))}
+                required
               />
               <FormInput
                 label="Student Name (optional)"
