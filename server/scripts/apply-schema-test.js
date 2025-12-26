@@ -103,7 +103,9 @@ async function main() {
     const tbl = await client.query("SELECT 1 FROM information_schema.tables WHERE table_schema='test' AND table_name='resource_types' LIMIT 1");
     if (tbl.rowCount > 0) {
       const eav = await client.query("SELECT 1 FROM eav_attributes WHERE entity_type='resource' AND attribute_name='isSoftware' LIMIT 1");
-      if (eav.rowCount > 0) {
+      const payroll = await client.query("SELECT 1 FROM information_schema.tables WHERE table_schema='test' AND table_name='payroll_runs' LIMIT 1");
+      // Only fast-skip if both EAV and payroll tables are present (so newly added payrolls won't be skipped accidentally)
+      if (eav.rowCount > 0 && payroll.rowCount > 0) {
         console.log('Test schema already initialized (fast-skip).');
         // Still attempt idempotent seeding in case rows are missing
         await trySeed(client);
