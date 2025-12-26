@@ -1,4 +1,5 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import { Download, FileText, Plus, Trash2, BookOpen } from 'lucide-react';
 import { useCurriculum } from '../../context/CurriculumContext';
 import { useAuth } from '../../context/AuthContext';
@@ -19,8 +20,10 @@ const downloadPlaceholder = (material) => {
 export const MaterialsPage = () => {
   const { userRole } = useAuth();
   const { courses, materials, uploadMaterial, deleteMaterial } = useCurriculum();
+  const [searchParams, setSearchParams] = useSearchParams();
 
-  const [filterCourseId, setFilterCourseId] = useState('all');
+  const courseIdFromUrl = searchParams.get('courseId');
+  const [filterCourseId, setFilterCourseId] = useState(courseIdFromUrl || 'all');
   const [showUpload, setShowUpload] = useState(false);
   const [error, setError] = useState(null);
 

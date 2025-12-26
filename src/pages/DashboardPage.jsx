@@ -132,7 +132,7 @@ export const DashboardPage = () => {
           </CardBody>
           <CardFooter>
             <Link
-              to="/assignments"
+              to="/course-assignments"
               className="text-primary-600 hover:text-primary-700 font-medium text-sm"
             >
               View All Assignments →

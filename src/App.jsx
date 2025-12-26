@@ -15,6 +15,8 @@ import { DashboardPage } from './pages/DashboardPage';
 
 import { CoursesPage } from './pages/curriculum/CoursesPage';
 import { CourseDetailPage } from './pages/curriculum/CourseDetailPage';
+import { CourseMaterialsPage } from './pages/curriculum/CourseMaterialsPage';
+import { CourseAssignmentsPage } from './pages/curriculum/CourseAssignmentsPage';
 import { AssignmentsPage } from './pages/curriculum/AssignmentsPage';
 import { AssignmentDetailPage } from './pages/curriculum/AssignmentDetailPage';
 import { StaffAssignmentsPage } from './pages/curriculum/StaffAssignmentsPage';
@@ -77,6 +79,24 @@ export const App = () => {
                       element={
                         <ProtectedRoute>
                           <CourseDetailPage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/course-materials"
+                      element={
+                        <ProtectedRoute>
+                          <CourseMaterialsPage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/course-assignments"
+                      element={
+                        <ProtectedRoute>
+                          <CourseAssignmentsPage />
                         </ProtectedRoute>
                       }
                     />
@@ -294,4 +314,3 @@ export const App = () => {
 };
 
 export default App;
-

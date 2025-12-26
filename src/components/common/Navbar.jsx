@@ -18,9 +18,9 @@ export const Navbar = () => {
     student: [
       { label: 'Dashboard', href: '/dashboard' },
       { label: 'Courses', href: '/courses' },
-      { label: 'Assignments', href: '/assignments' },
+      { label: 'Assignments', href: '/course-assignments' },
       { label: 'Grades', href: '/grades' },
-      { label: 'Materials', href: '/materials' },
+      { label: 'Materials', href: '/course-materials' },
       { label: 'Classrooms', href: '/classrooms' },
       { label: 'Events', href: '/events' },
       { label: 'Maintenance', href: '/maintenance' },
