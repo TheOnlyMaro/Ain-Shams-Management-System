@@ -30,11 +30,12 @@ async function getAttributeId(entityType, attributeName) {
 exports.signup = async (req, res) => {
   try {
     const { name, email, password, phone, role, staffType } = req.body || {};
+    const emailNorm = (email || '').trim().toLowerCase();
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'name, email and password are required' });
     }
 
-    const exists = await db.query('SELECT 1 FROM users WHERE email=$1', [email]);
+    const exists = await db.query('SELECT 1 FROM users WHERE email=$1', [emailNorm]);
     if (exists.rowCount) return res.status(409).json({ message: 'Email already in use' });
 
     const hashed = await bcrypt.hash(password, 10);
@@ -44,7 +45,7 @@ exports.signup = async (req, res) => {
       `INSERT INTO users(name, email, password, phone, role_id)
        VALUES ($1,$2,$3,$4,$5)
        RETURNING id, name, email, phone, role_id, created_at`,
-      [name, email, hashed, phone || '', roleId]
+      [name, emailNorm, hashed, phone || '', roleId]
     );
     const user = ins.rows[0];
 
@@ -103,9 +104,10 @@ exports.signup = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password } = req.body || {};
+    const emailNorm = (email || '').trim().toLowerCase();
     if (!email || !password) return res.status(400).json({ message: 'email and password required' });
 
-    const q = await db.query('SELECT id, name, email, password, phone, role_id, created_at FROM users WHERE email=$1', [email]);
+    const q = await db.query('SELECT id, name, email, password, phone, role_id, created_at FROM users WHERE email=$1', [emailNorm]);
     if (!q.rowCount) return res.status(401).json({ message: 'Invalid credentials' });
     const user = q.rows[0];
 
