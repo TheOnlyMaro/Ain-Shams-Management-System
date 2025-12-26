@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from './AuthContext';
+import api from '../utils/api';
 
 export const CampusContext = createContext();
 
@@ -99,7 +100,7 @@ export const CampusProvider = ({ children }) => {
   const [classrooms, setClassrooms] = useState(() => readJson('classrooms', DEFAULT_CLASSROOMS));
   const [bookings, setBookings] = useState(() => readJson('bookings', []));
   const [events, setEvents] = useState(() => readJson('events', DEFAULT_EVENTS));
-  const [maintenanceIssues, setMaintenanceIssues] = useState(() => readJson('maintenanceIssues', []));
+  const [maintenanceIssues, setMaintenanceIssues] = useState([]);
   const [payrollRecords, setPayrollRecords] = useState(() => readJson('payrollRecords', []));
   const [researchPublications, setResearchPublications] = useState(() =>
     readJson('researchPublications', DEFAULT_RESEARCH)
@@ -108,7 +109,7 @@ export const CampusProvider = ({ children }) => {
   useEffect(() => writeJson('classrooms', classrooms), [classrooms]);
   useEffect(() => writeJson('bookings', bookings), [bookings]);
   useEffect(() => writeJson('events', events), [events]);
-  useEffect(() => writeJson('maintenanceIssues', maintenanceIssues), [maintenanceIssues]);
+
   useEffect(() => writeJson('payrollRecords', payrollRecords), [payrollRecords]);
   useEffect(() => writeJson('researchPublications', researchPublications), [researchPublications]);
 
@@ -217,15 +218,15 @@ export const CampusProvider = ({ children }) => {
         prev.map((b) =>
           b.id === bookingId
             ? {
-                ...b,
-                status: nextStatus,
-                reviewedAt: new Date().toISOString(),
-                reviewedBy: {
-                  id: user._id || user.id || 'unknown',
-                  name: user.name || 'Reviewer',
-                  role: user.role || 'user',
-                },
-              }
+              ...b,
+              status: nextStatus,
+              reviewedAt: new Date().toISOString(),
+              reviewedBy: {
+                id: user._id || user.id || 'unknown',
+                name: user.name || 'Reviewer',
+                role: user.role || 'user',
+              },
+            }
             : b
         )
       );
@@ -233,37 +234,74 @@ export const CampusProvider = ({ children }) => {
     [user, bookings]
   );
 
+  const fetchMaintenanceIssues = useCallback(async () => {
+    if (!user) return;
+    try {
+      const res = await api.get('/maintenance');
+      setMaintenanceIssues(res.data.data);
+    } catch (err) {
+      console.error('Failed to fetch maintenance issues', err);
+    }
+  }, [user]);
+
+  useEffect(() => {
+    fetchMaintenanceIssues();
+  }, [fetchMaintenanceIssues]);
+
   const reportMaintenanceIssue = useCallback(
-    ({ location, category, description, priority }) => {
+    async ({ location, category, description, priority }) => {
       if (!user) throw new Error('You must be logged in');
       if (!location || !description) throw new Error('Location and description are required');
 
-      const newIssue = {
-        id: `MI-${Date.now()}`,
+      // Map frontend 'category' to backend 'issueType' if needed
+      // Frontend options: General, Electrical, Plumbing, HVAC, IT / Network
+      // Backend enum: general, equipment, furniture, electrical, plumbing, heating, cleaning, safety, other
+      let issueType = 'general';
+      if (category) {
+        const lower = category.toLowerCase();
+        if (['electrical', 'plumbing'].includes(lower)) issueType = lower;
+        else if (lower === 'hvac') issueType = 'heating';
+        else if (lower.includes('it')) issueType = 'other'; // or equipment
+      }
+
+      await api.post('/maintenance', {
         location,
-        category: category || 'General',
+        issueType,
+        title: `${category} Issue at ${location}`,
         description,
-        priority: priority || 'medium',
-        status: 'submitted',
-        reportedBy: {
-          id: user._id || user.id || 'unknown',
-          name: user.name || 'User',
-          role: user.role || 'user',
-        },
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-        notes: [],
-      };
-      setMaintenanceIssues((prev) => [newIssue, ...prev]);
-      return newIssue;
+        priority: priority || 'medium'
+      });
+
+      // Refresh list
+      await fetchMaintenanceIssues();
     },
-    [user]
+    [user, fetchMaintenanceIssues]
   );
 
-  const updateMaintenanceIssue = useCallback((issueId, patch) => {
-    setMaintenanceIssues((prev) =>
-      prev.map((i) => (i.id === issueId ? { ...i, ...patch, updatedAt: new Date().toISOString() } : i))
-    );
+  const updateMaintenanceIssue = useCallback(async (issueId, patch) => {
+    try {
+      // If updating status or notes, send to API
+      const payload = {};
+      if (patch.status) payload.status = patch.status;
+      if (patch.resolutionNotes) payload.resolutionNotes = patch.resolutionNotes;
+      if (patch.assignedToUserId) payload.assignedToUserId = patch.assignedToUserId;
+
+      if (Object.keys(payload).length > 0) {
+        const res = await api.patch(`/maintenance/${issueId}`, payload);
+        // Use server response to update local state
+        setMaintenanceIssues((prev) =>
+          prev.map((i) => (i.id === issueId ? { ...i, ...res.data.data } : i))
+        );
+      } else {
+        // Fallback for local-only updates (if any remain)
+        setMaintenanceIssues((prev) =>
+          prev.map((i) => (i.id === issueId ? { ...i, ...patch, updatedAt: new Date().toISOString() } : i))
+        );
+      }
+    } catch (err) {
+      console.error('Failed to update maintenance issue', err);
+      throw err; // Re-throw so UI can handle error
+    }
   }, []);
 
   const seedPayrollForStaffIfNeeded = useCallback(
