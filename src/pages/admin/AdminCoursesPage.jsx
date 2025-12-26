@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Edit2, Trash2, Eye } from 'lucide-react';
+import { Plus, Edit2, Trash2 } from 'lucide-react';
 import { useCurriculum } from '../../context/CurriculumContext';
 import { Card, CardHeader, CardBody, Button, Modal, FormInput, FormSelect, FormTextarea } from '../../components/common';
 
