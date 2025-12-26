@@ -8,6 +8,7 @@ const assignmentController = require('../controllers-sql/assignmentController');
 const validateRequest = require('../middleware/validateRequest');
 
 const router = express.Router();
+const materialsRoutes = require('./materialsRoutes');
 
 const createCourseValidators = [
   body('code').isString().trim().notEmpty(),
@@ -85,6 +86,7 @@ router.post('/assignments/:assignmentId/grade', [
   body('points').isFloat({ min: 0 }),
   body('feedback').optional().isString(),
 ], validateRequest, assignmentController.gradeAssignment);
+router.use('/courses/:courseId', materialsRoutes);
 
 // ============================================================================
 // COURSE METADATA ROUTES (EAV via SQL view) can be added later if required

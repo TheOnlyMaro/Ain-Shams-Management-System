@@ -142,6 +142,47 @@ export const CurriculumProvider = ({ children }) => {
       fetchGrades();
     }
   }, [courses.length, user, fetchGrades]);
+  const fetchMaterials = useCallback(async () => {
+    try {
+      // Fetch materials for each course and combine them
+      const allMaterials = [];
+      for (const course of courses) {
+        try {
+          const res = await axios.get(`${API_URL}/curriculum/courses/${course.id}/materials`, {
+            headers: getAuthHeaders(),
+          });
+          if (res.data.success && res.data.data) {
+            const courseMaterials = res.data.data.map((material) => ({
+              id: material.id,
+              courseId: material.courseId,
+              courseName: course.name || 'Unknown Course',
+              title: material.title,
+              type: material.type || 'document',
+              fileUrl: material.fileUrl || '',
+              fileSize: material.fileSize || '',
+              uploadedBy: material.uploadedBy || 'Staff',
+              description: material.description || '',
+              uploadedAt: material.uploadedAt || new Date().toISOString(),
+            }));
+            allMaterials.push(...courseMaterials);
+          }
+        } catch (err) {
+          // Skip courses that fail (might not have access)
+          console.warn(`Failed to fetch materials for course ${course.id}:`, err);
+        }
+      }
+      setMaterials(allMaterials);
+    } catch (err) {
+      console.error('Error fetching materials:', err);
+    }
+  }, [API_URL, getAuthHeaders, courses]);
+
+  // Fetch materials after courses are loaded
+  useEffect(() => {
+    if (courses.length > 0 && user) {
+      fetchMaterials();
+    }
+  }, [courses.length, user, fetchMaterials]);
 
   const getCourses = useCallback(() => courses, [courses]);
 
@@ -231,29 +272,158 @@ export const CurriculumProvider = ({ children }) => {
   );
 
   const uploadMaterial = useCallback(
-    (courseId, materialData) => {
-      const course = courses.find((c) => String(c.id) === String(courseId));
-      const newMaterial = {
-        id: `material_${Date.now()}`,
-        courseId,
-        courseName: course?.name,
-        uploadedAt: new Date().toISOString(),
-        uploadedBy: user?.name || 'Staff',
-        ...materialData,
-      };
-      setMaterials((prev) => [newMaterial, ...prev]);
-      return newMaterial;
+    async (courseId, materialData) => {
+      try {
+        const courseIdNum = typeof courseId === 'string' ? parseInt(courseId, 10) : courseId;
+        
+        // Generate a fileUrl - backend requires a non-empty string
+        let fileUrl = materialData.fileUrl;
+        if (!fileUrl || fileUrl === null) {
+          // If a file is provided, create a blob URL (temporary)
+          // In production, you'd upload to storage first and get the actual URL
+          if (materialData.fileName) {
+            // Use a placeholder path that can be replaced later
+            fileUrl = `/uploads/materials/${Date.now()}_${materialData.fileName}`;
+          } else {
+            // Default placeholder URL
+            fileUrl = `/uploads/materials/placeholder_${Date.now()}.txt`;
+          }
+        }
+        
+        // Ensure fileUrl is a string (not null or undefined)
+        fileUrl = String(fileUrl || '').trim();
+        if (!fileUrl) {
+          throw new Error('File URL is required');
+        }
+
+        const payload = {
+          title: String(materialData.title || '').trim(),
+          type: materialData.type || 'document',
+          fileUrl: fileUrl,
+          fileSize: String(materialData.fileSize || '').trim(),
+          description: String(materialData.description || '').trim(),
+        };
+        
+        console.log('Uploading material:', {
+          courseId: courseId,
+          courseIdNum: courseIdNum,
+          isInteger: Number.isInteger(courseIdNum),
+          url: `${API_URL}/curriculum/courses/${courseIdNum}/materials`,
+          payload
+        });
+        
+        // Ensure courseIdNum is a valid integer
+        if (!Number.isInteger(courseIdNum) || courseIdNum <= 0) {
+          throw new Error(`Invalid course ID: ${courseId} (parsed as ${courseIdNum})`);
+        }
+        
+        const res = await axios.post(
+          `${API_URL}/curriculum/courses/${courseIdNum}/materials`,
+          payload,
+          {
+            headers: getAuthHeaders(),
+          }
+        );
+        if (res.data.success) {
+          const course = courses.find((c) => String(c.id) === String(courseId));
+          const newMaterial = {
+            id: res.data.data.id,
+            courseId: res.data.data.courseId,
+            courseName: course?.name || 'Unknown Course',
+            title: res.data.data.title,
+            type: res.data.data.type,
+            fileUrl: res.data.data.fileUrl,
+            fileSize: res.data.data.fileSize || '',
+            uploadedBy: res.data.data.uploadedBy || user?.name || 'Staff',
+            description: res.data.data.description || '',
+            uploadedAt: res.data.data.uploadedAt || new Date().toISOString(),
+          };
+          setMaterials((prev) => [newMaterial, ...prev]);
+          return newMaterial;
+        }
+        throw new Error('Failed to upload material');
+      } catch (err) {
+        console.error('Error uploading material:', err);
+        console.error('Error response:', err.response?.data);
+        throw err;
+      }
     },
-    [courses, user]
+    [API_URL, getAuthHeaders, courses, user]
   );
 
-  const deleteMaterial = useCallback((id) => {
-    setMaterials((prev) => prev.filter((material) => material.id !== id));
-  }, []);
+  const deleteMaterial = useCallback(
+    async (id) => {
+      try {
+        // Find the material to get courseId
+        const material = materials.find((m) => String(m.id) === String(id));
+        if (!material) {
+          throw new Error('Material not found');
+        }
 
-  const updateMaterial = useCallback((id, materialData) => {
-    setMaterials((prev) => prev.map((material) => (material.id === id ? { ...material, ...materialData } : material)));
-  }, []);
+        const courseIdNum = typeof material.courseId === 'string' ? parseInt(material.courseId, 10) : material.courseId;
+        const materialIdNum = typeof id === 'string' ? parseInt(id, 10) : id;
+
+        await axios.delete(`${API_URL}/curriculum/courses/${courseIdNum}/materials/${materialIdNum}`, {
+          headers: getAuthHeaders(),
+        });
+        setMaterials((prev) => prev.filter((material) => {
+          const mId = typeof material.id === 'string' ? parseInt(material.id, 10) : material.id;
+          return mId !== materialIdNum;
+        }));
+      } catch (err) {
+        console.error('Error deleting material:', err);
+        throw err;
+      }
+    },
+    [API_URL, getAuthHeaders, materials]
+  );
+
+  const updateMaterial = useCallback(
+    async (id, materialData) => {
+      try {
+        // Find the material to get courseId
+        const material = materials.find((m) => String(m.id) === String(id));
+        if (!material) {
+          throw new Error('Material not found');
+        }
+
+        const courseIdNum = typeof material.courseId === 'string' ? parseInt(material.courseId, 10) : material.courseId;
+        const materialIdNum = typeof id === 'string' ? parseInt(id, 10) : id;
+
+        const updateData = {};
+        if (materialData.title !== undefined) updateData.title = materialData.title;
+        if (materialData.type !== undefined) updateData.type = materialData.type;
+        if (materialData.description !== undefined) updateData.description = materialData.description;
+
+        const res = await axios.patch(
+          `${API_URL}/curriculum/courses/${courseIdNum}/materials/${materialIdNum}`,
+          updateData,
+          {
+            headers: getAuthHeaders(),
+          }
+        );
+        if (res.data.success) {
+          const course = courses.find((c) => String(c.id) === String(material.courseId));
+          const updatedMaterial = {
+            ...res.data.data,
+            courseName: course?.name || material.courseName || 'Unknown Course',
+          };
+          setMaterials((prev) =>
+            prev.map((m) => {
+              const mId = typeof m.id === 'string' ? parseInt(m.id, 10) : m.id;
+              return mId === materialIdNum ? updatedMaterial : m;
+            })
+          );
+          return updatedMaterial;
+        }
+        throw new Error('Failed to update material');
+      } catch (err) {
+        console.error('Error updating material:', err);
+        throw err;
+      }
+    },
+    [API_URL, getAuthHeaders, materials, courses]
+  );
 
   const getAssignments = useCallback(() => assignments, [assignments]);
 

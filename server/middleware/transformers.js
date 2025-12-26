@@ -101,6 +101,19 @@ exports.mapGradeRowToApi = (row) => {
     feedback: row.feedback || '',
     assignmentTitle: row.assignment_title || '',
     assignmentTotalPoints: Number(row.assignment_total_points) || 0,
+exports.mapClassroomRowToApi = (row) => {
+  if (!row) return null;
+  return {
+    id: row.id,
+    roomNumber: row.room_number || '',
+    building: row.building || '',
+    floor: Number(row.floor) || 0,
+    roomType: row.room_type || 'classroom',
+    capacity: Number(row.capacity) || 0,
+    amenities: row.amenities || '',
+    equipment: row.equipment || '',
+    isActive: row.is_active !== false,
+    notes: row.notes || '',
     createdAt: row.created_at,
     updatedAt: row.updated_at,
   };
@@ -112,4 +125,14 @@ exports.mapGradeApiToSql = (body) => ({
   student_id: Number(body.studentId || body.student_id || body.student) || null,
   points: Number(body.points) || 0,
   feedback: body.feedback || '',
+exports.mapClassroomApiToSql = (body) => ({
+  room_number: body.roomNumber || body.room_number || '',
+  building: body.building || '',
+  floor: Number(body.floor) || 0,
+  room_type: body.roomType || body.room_type || 'classroom',
+  capacity: Number(body.capacity) || 0,
+  amenities: body.amenities || '',
+  equipment: body.equipment || '',
+  is_active: body.isActive !== false,
+  notes: body.notes || '',
 });
