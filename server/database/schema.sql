@@ -18,12 +18,14 @@ CREATE TABLE users (
   email VARCHAR(255) NOT NULL UNIQUE,
   password VARCHAR(255) NOT NULL,
   phone VARCHAR(20) NOT NULL DEFAULT '',
+  national_id VARCHAR(50), -- Added for Parent-Student verification
   role_id INTEGER NOT NULL REFERENCES roles(id),
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE INDEX idx_users_email ON users(email);
+CREATE INDEX idx_users_national_id ON users(national_id);
 CREATE INDEX idx_users_role_id ON users(role_id);
 
 -- TABLE: courses
@@ -133,6 +135,18 @@ CREATE TABLE course_enrollments (
 
 CREATE INDEX idx_course_enrollments_course_id ON course_enrollments(course_id);
 CREATE INDEX idx_course_enrollments_student_id ON course_enrollments(student_id);
+
+-- TABLE: parent_students
+CREATE TABLE parent_students (
+  id SERIAL PRIMARY KEY,
+  parent_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(parent_id, student_id)
+);
+
+CREATE INDEX idx_parent_students_parent_id ON parent_students(parent_id);
+CREATE INDEX idx_parent_students_student_id ON parent_students(student_id);
 
 -- TABLE: tags
 CREATE TABLE tags (
