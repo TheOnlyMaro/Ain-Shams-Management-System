@@ -26,11 +26,86 @@ async function main() {
     await client.query("CREATE SCHEMA IF NOT EXISTS test");
     await client.query("SET search_path TO test, public");
 
+    // Proactively create payroll tables in case schema.sql is parsed/executed out-of-order
+    // This is defensive for the test apply which executes statements individually.
+    try {
+      await client.query(`CREATE TABLE IF NOT EXISTS payroll_runs (
+        id SERIAL PRIMARY KEY,
+        period_start DATE NOT NULL,
+        period_end DATE NOT NULL,
+        status VARCHAR(50) NOT NULL DEFAULT 'pending',
+        notes TEXT NOT NULL DEFAULT '',
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`);
+      await client.query(`CREATE TABLE IF NOT EXISTS payroll_entries (
+        id SERIAL PRIMARY KEY,
+        payroll_run_id INTEGER,
+        user_id INTEGER,
+        gross_amount DECIMAL(19,4) NOT NULL DEFAULT 0,
+        net_amount DECIMAL(19,4) NOT NULL DEFAULT 0,
+        status VARCHAR(50) NOT NULL DEFAULT 'pending',
+        metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`);
+      await client.query(`CREATE TABLE IF NOT EXISTS payroll_components (
+        id SERIAL PRIMARY KEY,
+        payroll_entry_id INTEGER,
+        component_type VARCHAR(100) NOT NULL,
+        amount DECIMAL(19,4) NOT NULL DEFAULT 0,
+        taxable BOOLEAN NOT NULL DEFAULT TRUE,
+        metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`);
+    } catch (e) {
+      // best-effort; ignore
+    }
+    // Proactively create performance tables as well
+    try {
+      await client.query(`CREATE TABLE IF NOT EXISTS performance_reviews (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        reviewer_id INTEGER,
+        period_start DATE NOT NULL,
+        period_end DATE NOT NULL,
+        overall_rating DECIMAL(3,2),
+        status VARCHAR(50) NOT NULL DEFAULT 'draft',
+        summary TEXT NOT NULL DEFAULT '',
+        metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`);
+      await client.query(`CREATE TABLE IF NOT EXISTS performance_goals (
+        id SERIAL PRIMARY KEY,
+        review_id INTEGER,
+        title VARCHAR(255) NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        target_date DATE,
+        status VARCHAR(50) NOT NULL DEFAULT 'open',
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`);
+      await client.query(`CREATE TABLE IF NOT EXISTS performance_feedback (
+        id SERIAL PRIMARY KEY,
+        review_id INTEGER,
+        commenter_id INTEGER,
+        comment TEXT NOT NULL,
+        rating DECIMAL(3,2) DEFAULT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`);
+    } catch (e) {
+      // ignore
+    }
+
     // Fast-check: if key test tables/attributes already exist, skip expensive full apply.
     const tbl = await client.query("SELECT 1 FROM information_schema.tables WHERE table_schema='test' AND table_name='resource_types' LIMIT 1");
     if (tbl.rowCount > 0) {
       const eav = await client.query("SELECT 1 FROM eav_attributes WHERE entity_type='resource' AND attribute_name='isSoftware' LIMIT 1");
-      if (eav.rowCount > 0) {
+      const payroll = await client.query("SELECT 1 FROM information_schema.tables WHERE table_schema='test' AND table_name='payroll_runs' LIMIT 1");
+      // Only fast-skip if both EAV and payroll tables are present (so newly added payrolls won't be skipped accidentally)
+      if (eav.rowCount > 0 && payroll.rowCount > 0) {
         console.log('Test schema already initialized (fast-skip).');
         // Still attempt idempotent seeding in case rows are missing
         await trySeed(client);

@@ -449,10 +449,40 @@ FROM eav_values v
 JOIN eav_attributes a ON a.id = v.attribute_id
 WHERE v.entity_type = 'course';
 
+-- TABLE: research
+CREATE TABLE research (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  abstract TEXT NOT NULL,
+  author_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  author_name VARCHAR(255) NOT NULL,
+  category VARCHAR(100) NOT NULL DEFAULT 'general',
+  publication_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  status VARCHAR(50) NOT NULL DEFAULT 'published' CHECK (status IN ('draft', 'published', 'archived')),
+  file_url VARCHAR(500) NOT NULL DEFAULT '',
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_research_author_id ON research(author_id);
+CREATE INDEX idx_research_status ON research(status);
+CREATE INDEX idx_research_category ON research(category);
+
+-- TABLE: research_tags
+CREATE TABLE research_tags (
+  id SERIAL PRIMARY KEY,
+  research_id INTEGER NOT NULL REFERENCES research(id) ON DELETE CASCADE,
+  tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE RESTRICT,
+  UNIQUE(research_id, tag_id)
+);
+
+CREATE INDEX idx_research_tags_research_id ON research_tags(research_id);
+
 -- ============================================================================
 -- SUMMARY
 -- ============================================================================
--- 19 tables total
+-- 21 tables total
 -- All fields NOT NULL with sensible defaults
 -- Single role per user (role_id in users table)
 -- staffType moved to EAV (entity_type='user', attribute_name='staffType')
@@ -460,3 +490,46 @@ WHERE v.entity_type = 'course';
 -- Embedded documents → separate relational tables
 -- Core entities (users, courses, assignments, grades, applications, classrooms) = relational only
 -- Typed EAV for dynamic/optional metadata only; course metadata exposed via vw_course_metadata
+
+-- ============================================================================
+-- PAYROLLS (HR)
+-- ============================================================================
+-- Track payroll runs, individual payroll entries per employee, and components (earnings/deductions)
+CREATE TABLE IF NOT EXISTS payroll_runs (
+  id SERIAL PRIMARY KEY,
+  period_start DATE NOT NULL,
+  period_end DATE NOT NULL,
+  status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','processing','finalized','paid','cancelled')),
+  notes TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS payroll_entries (
+  id SERIAL PRIMARY KEY,
+  payroll_run_id INTEGER NOT NULL REFERENCES payroll_runs(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  gross_amount DECIMAL(19,4) NOT NULL DEFAULT 0,
+  net_amount DECIMAL(19,4) NOT NULL DEFAULT 0,
+  status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','paid','adjusted')),
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(payroll_run_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS payroll_components (
+  id SERIAL PRIMARY KEY,
+  payroll_entry_id INTEGER NOT NULL REFERENCES payroll_entries(id) ON DELETE CASCADE,
+  component_type VARCHAR(100) NOT NULL, -- e.g., 'base_salary','bonus','tax','pension'
+  amount DECIMAL(19,4) NOT NULL DEFAULT 0,
+  taxable BOOLEAN NOT NULL DEFAULT TRUE,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_payroll_runs_period ON payroll_runs(period_start, period_end);
+CREATE INDEX IF NOT EXISTS idx_payroll_entries_run_id ON payroll_entries(payroll_run_id);
+CREATE INDEX IF NOT EXISTS idx_payroll_entries_user_id ON payroll_entries(user_id);
+CREATE INDEX IF NOT EXISTS idx_payroll_components_entry_id ON payroll_components(payroll_entry_id);
