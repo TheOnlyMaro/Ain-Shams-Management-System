@@ -32,6 +32,7 @@ import { ResourcesPage, ManageResourcesPage, AllocationsPage } from './pages/res
 // Admin pages (NAMED exports ✅)
 import { AdminApplicationsPage } from './pages/admin/AdminApplicationsPage';
 import { AdminCoursesPage } from './pages/admin/AdminCoursesPage';
+import { PayrunsPage } from './pages/admin/PayrunsPage';
 
 import { ClassroomsPage } from './pages/campus/ClassroomsPage';
 import { MyBookingsPage } from './pages/campus/MyBookingsPage';
@@ -42,6 +43,7 @@ import { AdminMaintenancePage } from './pages/campus/AdminMaintenancePage';
 import { PayrollPage } from './pages/campus/PayrollPage';
 import { ResearchHubPage } from './pages/campus/ResearchHubPage';
 import { PublishResearchPage } from './pages/campus/PublishResearchPage';
+import { PerformancePage } from './pages/staff/PerformancePage';
 
 // Community pages (DEFAULT exports ✅)
 import MessagesPage from './pages/messages/MessagesPage';
@@ -126,6 +128,15 @@ function App() {
                     />
 
                     <Route
+                      path="/messages"
+                      element={
+                        <ProtectedRoute>
+                          <MessagesPage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
                       path="/admin/applications"
                       element={
                         <ProtectedRoute roles={['admin']}>
@@ -139,6 +150,15 @@ function App() {
                       element={
                         <ProtectedRoute roles={['admin']}>
                           <AdminCoursesPage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/admin/payrolls"
+                      element={
+                        <ProtectedRoute roles={['admin','staff']}>
+                          <PayrunsPage />
                         </ProtectedRoute>
                       }
                     />
@@ -216,6 +236,15 @@ function App() {
                     />
 
                     <Route
+                      path="/staff/performance"
+                      element={
+                        <ProtectedRoute roles={['staff']}>
+                          <PerformancePage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
                       path="/classrooms"
                       element={
                         <ProtectedRoute>
@@ -265,6 +294,15 @@ function App() {
                       element={
                         <ProtectedRoute roles={['admin', 'staff']}>
                           <AdminMaintenancePage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/admin/announcements"
+                      element={
+                        <ProtectedRoute roles={['admin', 'staff']}>
+                          <EnhancedAnnouncementsPage />
                         </ProtectedRoute>
                       }
                     />

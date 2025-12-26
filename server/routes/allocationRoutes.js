@@ -10,10 +10,12 @@ const router = express.Router();
 router.get('/', optionalAuthenticate, [query('resourceId').optional().isInt(), query('userId').optional().isInt()], validateRequest, allocationController.listAllocations);
 router.get('/:allocationId', optionalAuthenticate, param('allocationId').isInt(), validateRequest, allocationController.getAllocation);
 
-router.post('/', authenticate, authorizeRole(['admin','staff']), [
+// Allow authenticated students to create reservation requests (they will be created as 'pending')
+router.post('/', authenticate, authorizeRole(['admin','staff','student']), [
   body('resourceId').isInt(),
   body('allocatedToUserId').optional().isInt(),
   body('allocatedToDepartment').optional().isString(),
+  body('allocatedAt').optional().isISO8601(),
   body('dueBack').optional().isISO8601(),
 ], validateRequest, allocationController.createAllocation);
 

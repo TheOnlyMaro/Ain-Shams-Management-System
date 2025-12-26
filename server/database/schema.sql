@@ -63,6 +63,24 @@ CREATE INDEX IF NOT EXISTS idx_resource_allocations_resource_id ON resource_allo
 CREATE INDEX IF NOT EXISTS idx_resource_allocations_allocated_to_user_id ON resource_allocations(allocated_to_user_id);
 CREATE INDEX IF NOT EXISTS idx_resource_allocations_allocated_by ON resource_allocations(allocated_by);
 
+-- TABLE: leave_requests (staff leave management)
+CREATE TABLE IF NOT EXISTS leave_requests (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  start_date TIMESTAMP NOT NULL,
+  end_date TIMESTAMP NOT NULL,
+  leave_type VARCHAR(50) NOT NULL DEFAULT 'vacation', -- vacation, sick, personal, unpaid, other
+  reason TEXT NOT NULL DEFAULT '',
+  status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','denied','cancelled')),
+  approver_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  approver_note TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_leave_requests_user_id ON leave_requests(user_id);
+CREATE INDEX IF NOT EXISTS idx_leave_requests_status ON leave_requests(status);
+
 
 -- TABLE: users (single role per user)
 CREATE TABLE users (
@@ -200,65 +218,6 @@ CREATE TABLE parent_students (
 
 CREATE INDEX idx_parent_students_parent_id ON parent_students(parent_id);
 CREATE INDEX idx_parent_students_student_id ON parent_students(student_id);
-
--- TABLE: quizzes
-CREATE TABLE quizzes (
-  id SERIAL PRIMARY KEY,
-  course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
-  creator_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
-  title VARCHAR(255) NOT NULL,
-  description TEXT NOT NULL DEFAULT '',
-  due_date TIMESTAMP,
-  time_limit_minutes INTEGER,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_quizzes_course_id ON quizzes(course_id);
-CREATE INDEX idx_quizzes_creator_id ON quizzes(creator_id);
-
--- TABLE: quiz_questions
-CREATE TABLE quiz_questions (
-  id SERIAL PRIMARY KEY,
-  quiz_id INTEGER NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
-  question_text TEXT NOT NULL,
-  question_type VARCHAR(50) NOT NULL CHECK (question_type IN ('mcq', 'short_answer')),
-  options JSONB NOT NULL DEFAULT '[]'::jsonb,
-  correct_answer TEXT NOT NULL DEFAULT '',
-  points INTEGER NOT NULL DEFAULT 1 CHECK (points > 0),
-  order_index INTEGER NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_quiz_questions_quiz_id ON quiz_questions(quiz_id);
-
--- TABLE: quiz_submissions
-CREATE TABLE quiz_submissions (
-  id SERIAL PRIMARY KEY,
-  quiz_id INTEGER NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
-  student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-  score DECIMAL(5,2) NOT NULL DEFAULT 0,
-  submitted_at TIMESTAMP,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(quiz_id, student_id)
-);
-
-CREATE INDEX idx_quiz_submissions_quiz_id ON quiz_submissions(quiz_id);
-CREATE INDEX idx_quiz_submissions_student_id ON quiz_submissions(student_id);
-
--- TABLE: quiz_answers
-CREATE TABLE quiz_answers (
-  id SERIAL PRIMARY KEY,
-  submission_id INTEGER NOT NULL REFERENCES quiz_submissions(id) ON DELETE CASCADE,
-  question_id INTEGER NOT NULL REFERENCES quiz_questions(id) ON DELETE CASCADE,
-  answer_text TEXT NOT NULL DEFAULT '',
-  is_correct BOOLEAN NOT NULL DEFAULT false,
-  points_awarded DECIMAL(5,2) NOT NULL DEFAULT 0,
-  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE INDEX idx_quiz_answers_submission_id ON quiz_answers(submission_id);
-CREATE INDEX idx_quiz_answers_question_id ON quiz_answers(question_id);
 
 -- TABLE: tags
 CREATE TABLE tags (
@@ -490,10 +449,40 @@ FROM eav_values v
 JOIN eav_attributes a ON a.id = v.attribute_id
 WHERE v.entity_type = 'course';
 
+-- TABLE: research
+CREATE TABLE research (
+  id SERIAL PRIMARY KEY,
+  title VARCHAR(255) NOT NULL,
+  abstract TEXT NOT NULL,
+  author_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  author_name VARCHAR(255) NOT NULL,
+  category VARCHAR(100) NOT NULL DEFAULT 'general',
+  publication_date TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  status VARCHAR(50) NOT NULL DEFAULT 'published' CHECK (status IN ('draft', 'published', 'archived')),
+  file_url VARCHAR(500) NOT NULL DEFAULT '',
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_research_author_id ON research(author_id);
+CREATE INDEX idx_research_status ON research(status);
+CREATE INDEX idx_research_category ON research(category);
+
+-- TABLE: research_tags
+CREATE TABLE research_tags (
+  id SERIAL PRIMARY KEY,
+  research_id INTEGER NOT NULL REFERENCES research(id) ON DELETE CASCADE,
+  tag_id INTEGER NOT NULL REFERENCES tags(id) ON DELETE RESTRICT,
+  UNIQUE(research_id, tag_id)
+);
+
+CREATE INDEX idx_research_tags_research_id ON research_tags(research_id);
+
 -- ============================================================================
 -- SUMMARY
 -- ============================================================================
--- 19 tables total
+-- 21 tables total
 -- All fields NOT NULL with sensible defaults
 -- Single role per user (role_id in users table)
 -- staffType moved to EAV (entity_type='user', attribute_name='staffType')
@@ -501,3 +490,46 @@ WHERE v.entity_type = 'course';
 -- Embedded documents → separate relational tables
 -- Core entities (users, courses, assignments, grades, applications, classrooms) = relational only
 -- Typed EAV for dynamic/optional metadata only; course metadata exposed via vw_course_metadata
+
+-- ============================================================================
+-- PAYROLLS (HR)
+-- ============================================================================
+-- Track payroll runs, individual payroll entries per employee, and components (earnings/deductions)
+CREATE TABLE IF NOT EXISTS payroll_runs (
+  id SERIAL PRIMARY KEY,
+  period_start DATE NOT NULL,
+  period_end DATE NOT NULL,
+  status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','processing','finalized','paid','cancelled')),
+  notes TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE IF NOT EXISTS payroll_entries (
+  id SERIAL PRIMARY KEY,
+  payroll_run_id INTEGER NOT NULL REFERENCES payroll_runs(id) ON DELETE CASCADE,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  gross_amount DECIMAL(19,4) NOT NULL DEFAULT 0,
+  net_amount DECIMAL(19,4) NOT NULL DEFAULT 0,
+  status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','paid','adjusted')),
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(payroll_run_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS payroll_components (
+  id SERIAL PRIMARY KEY,
+  payroll_entry_id INTEGER NOT NULL REFERENCES payroll_entries(id) ON DELETE CASCADE,
+  component_type VARCHAR(100) NOT NULL, -- e.g., 'base_salary','bonus','tax','pension'
+  amount DECIMAL(19,4) NOT NULL DEFAULT 0,
+  taxable BOOLEAN NOT NULL DEFAULT TRUE,
+  metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_payroll_runs_period ON payroll_runs(period_start, period_end);
+CREATE INDEX IF NOT EXISTS idx_payroll_entries_run_id ON payroll_entries(payroll_run_id);
+CREATE INDEX IF NOT EXISTS idx_payroll_entries_user_id ON payroll_entries(user_id);
+CREATE INDEX IF NOT EXISTS idx_payroll_components_entry_id ON payroll_components(payroll_entry_id);

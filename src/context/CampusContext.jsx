@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useEffect, useMemo, useState } from 'react';
 import { useAuth } from './AuthContext';
-import api from '../utils/api';
+import api, { payrollApi } from '../utils/api';
 
 export const CampusContext = createContext();
 
@@ -102,14 +102,35 @@ export const CampusProvider = ({ children }) => {
   const [events, setEvents] = useState(() => readJson('events', DEFAULT_EVENTS));
   const [maintenanceIssues, setMaintenanceIssues] = useState([]);
   const [payrollRecords, setPayrollRecords] = useState(() => readJson('payrollRecords', []));
-  const [researchPublications, setResearchPublications] = useState(() =>
-    readJson('researchPublications', DEFAULT_RESEARCH)
-  );
+  const [researchPublications, setResearchPublications] = useState([]);
+
+  // Fetch research from API
+  const fetchResearch = useCallback(async () => {
+    try {
+      const res = await api.get('/research');
+      if (res.data.success) {
+        // Map backend data to frontend structure
+        const mapped = res.data.data.map(p => ({
+          ...p,
+          id: String(p.id),
+          authors: p.metadata?.authors || [p.authorName], // Fallback if metadata not set
+          publishedAt: p.publicationDate || p.createdAt,
+          keywords: p.tags || []
+        }));
+        setResearchPublications(mapped);
+      }
+    } catch (err) {
+      console.error('Failed to fetch research', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchResearch();
+  }, [fetchResearch]);
 
   useEffect(() => writeJson('classrooms', classrooms), [classrooms]);
   useEffect(() => writeJson('bookings', bookings), [bookings]);
-
-  // Fetch classrooms from API
+  useEffect(() => writeJson('payrollRecords', payrollRecords), [payrollRecords]);
   const fetchClassrooms = useCallback(async () => {
     try {
       const res = await api.get('/classrooms');
@@ -137,8 +158,9 @@ export const CampusProvider = ({ children }) => {
     fetchClassrooms();
   }, [fetchClassrooms]);
 
+  useEffect(() => writeJson('classrooms', classrooms), [classrooms]);
+  useEffect(() => writeJson('bookings', bookings), [bookings]);
   useEffect(() => writeJson('payrollRecords', payrollRecords), [payrollRecords]);
-  useEffect(() => writeJson('researchPublications', researchPublications), [researchPublications]);
 
   const getApprovedBookingsForClassroomDate = useCallback(
     (classroomId, dateISO) => {
@@ -390,28 +412,81 @@ export const CampusProvider = ({ children }) => {
     [setPayrollRecords]
   );
 
+    const fetchPayrollsFromServer = useCallback(async () => {
+      try {
+        const res = await payrollApi.getPayruns();
+        if (!res || !res.data || !res.data.success) return;
+        const runs = res.data.data || [];
+        const records = [];
+        for (const run of runs) {
+          // fetch entries for each run
+          try {
+            const rr = await payrollApi.getPayrun(run.id);
+            if (!rr || !rr.data || !rr.data.success) continue;
+            const runData = rr.data.data;
+            const entries = runData.entries || [];
+            for (const e of entries) {
+              const gross = Number(e.gross_amount || 0);
+              const net = Number(e.net_amount || gross);
+              records.push({
+                id: e.id,
+                staffId: e.user_id,
+                periodStart: run.period_start,
+                periodEnd: run.period_end,
+                gross,
+                deductions: gross - net,
+                net,
+                status: e.status || run.status,
+                paidAt: run.status === 'paid' ? run.updated_at : null,
+              });
+            }
+          } catch (err) {
+            // ignore per-run errors
+          }
+        }
+        if (records.length) setPayrollRecords(records);
+      } catch (err) {
+        console.error('Failed to fetch payrolls from server', err);
+      }
+    }, []);
+
+    useEffect(() => {
+      if (!user) return;
+      // Only fetch payrolls for staff/admin users; otherwise keep local student view
+      const role = user?.role || user?.roleId;
+      // assume role strings available on user.role
+      if (role === 'staff' || role === 'admin' || user?.isStaff) {
+        fetchPayrollsFromServer().catch(() => {
+          // fallback: ensure some seeded data exists for UI
+          seedPayrollForStaffIfNeeded(user._id || user.id);
+        });
+      } else {
+        // non-staff users: seed local demo payrolls for their own view
+        seedPayrollForStaffIfNeeded(user._id || user.id);
+      }
+    }, [user, fetchPayrollsFromServer, seedPayrollForStaffIfNeeded]);
+
   const publishResearch = useCallback(
-    ({ title, abstract, authors, keywords }) => {
+    async ({ title, abstract, authors, keywords }) => {
       if (!user) throw new Error('You must be logged in');
       if (!title || !abstract) throw new Error('Title and abstract are required');
-      const newPub = {
-        id: `RCH-${Date.now()}`,
+
+      const res = await api.post('/research', {
         title,
         abstract,
-        authors: (authors || []).filter(Boolean),
-        keywords: (keywords || []).filter(Boolean),
-        status: 'published',
-        publishedAt: new Date().toISOString(),
-        submittedBy: {
-          id: user._id || user.id || 'unknown',
-          name: user.name || 'User',
-          role: user.role || 'user',
-        },
-      };
-      setResearchPublications((prev) => [newPub, ...prev]);
-      return newPub;
+        tags: keywords || [],
+        metadata: {
+          authors: (authors || []).filter(Boolean)
+        }
+      });
+
+      if (res.data.success) {
+        await fetchResearch();
+        return res.data.data;
+      }
+      throw new Error(res.data.message || 'Failed to publish');
     },
-    [user]
+    [user, fetchResearch]
   );
 
   const myBookings = useMemo(() => {
@@ -460,6 +535,7 @@ export const CampusProvider = ({ children }) => {
 
     seedPayrollForStaffIfNeeded,
     getPayrollForStaff,
+    fetchPayrollsFromServer,
 
     publishResearch,
 
