@@ -5,6 +5,7 @@ import { CurriculumProvider } from './context/CurriculumContext';
 import { AdmissionProvider } from './context/AdmissionContext';
 import { AnnouncementProvider } from './context/AnnouncementContext';
 import { CampusProvider } from './context/CampusContext';
+import { ResourcesProvider } from './context/ResourcesContext';
 import { Navbar } from './components/common';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
@@ -26,6 +27,7 @@ import { QuizTakePage } from './pages/curriculum/QuizTakePage';
 import { ParentProgressPage } from './pages/parent/ParentProgressPage';
 
 import { AdmissionPage } from './pages/admission/AdmissionPage';
+import { ResourcesPage, ManageResourcesPage, AllocationsPage } from './pages/resources';
 
 // Admin pages (NAMED exports ✅)
 import { AdminApplicationsPage } from './pages/admin/AdminApplicationsPage';
@@ -54,9 +56,10 @@ function App() {
           <AdmissionProvider>
             <AnnouncementProvider>
               <CampusProvider>
-                <div className="min-h-screen bg-gray-50">
-                  <Navbar />
-                  <Routes>
+                <ResourcesProvider>
+                  <div className="min-h-screen bg-gray-50">
+                    <Navbar />
+                    <Routes>
                     <Route path="/" element={<HomePage />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/signup" element={<SignupPage />} />
@@ -284,9 +287,37 @@ function App() {
                       }
                     />
 
+                    <Route
+                      path="/resources"
+                      element={
+                        <ProtectedRoute roles={['student']}>
+                          <ResourcesPage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/staff/resources"
+                      element={
+                        <ProtectedRoute roles={['staff', 'admin']}>
+                          <ManageResourcesPage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/staff/resources/allocations"
+                      element={
+                        <ProtectedRoute roles={['staff', 'admin']}>
+                          <AllocationsPage />
+                        </ProtectedRoute>
+                      }
+                    />
+
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </div>
+                </ResourcesProvider>
               </CampusProvider>
             </AnnouncementProvider>
           </AdmissionProvider>

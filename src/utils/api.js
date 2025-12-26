@@ -112,4 +112,43 @@ export const parentApi = {
     apiClient.get(`/parents/children/${studentId}/progress`),
 };
 
+export const resourcesApi = {
+  getResources: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    return apiClient.get(`/resources?${query.toString()}`);
+  },
+  getResource: (resourceId) =>
+    apiClient.get(`/resources/${resourceId}`),
+  createResource: (data) =>
+    apiClient.post('/resources', data),
+  updateResource: (resourceId, data) =>
+    apiClient.patch(`/resources/${resourceId}`, data),
+  deleteResource: (resourceId) =>
+    apiClient.delete(`/resources/${resourceId}`),
+  getResourceTypes: () =>
+    apiClient.get('/resources/types'),
+  createResourceType: (data) =>
+    apiClient.post('/resources/types', data),
+  updateResourceType: (typeId, data) =>
+    apiClient.patch(`/resources/types/${typeId}`, data),
+};
+
+export const allocationsApi = {
+  getAllocations: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.resourceId) query.append('resourceId', params.resourceId);
+    if (params.userId) query.append('userId', params.userId);
+    return apiClient.get(`/allocations?${query.toString()}`);
+  },
+  getAllocation: (allocationId) =>
+    apiClient.get(`/allocations/${allocationId}`),
+  createAllocation: (data) =>
+    apiClient.post('/allocations', data),
+  updateAllocation: (allocationId, data) =>
+    apiClient.patch(`/allocations/${allocationId}`, data),
+  deleteAllocation: (allocationId) =>
+    apiClient.delete(`/allocations/${allocationId}`),
+};
+
 export default apiClient;

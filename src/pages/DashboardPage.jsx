@@ -4,7 +4,7 @@ import { useAnnouncement } from '../context/AnnouncementContext';
 import { useCurriculum } from '../context/CurriculumContext';
 import { useAdmission } from '../context/AdmissionContext';
 import { Card, CardHeader, CardBody, CardFooter } from '../components/common';
-import { BookOpen, FileText, Bell, ClipboardList, TrendingUp, Users } from 'lucide-react';
+import { BookOpen, FileText, Bell, ClipboardList, TrendingUp, Users, Package } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { formatTimeAgo } from '../utils/dateUtils';
 
@@ -73,6 +73,18 @@ export const DashboardPage = () => {
             <TrendingUp className="w-12 h-12 text-blue-100 bg-blue-50 rounded-lg p-2" />
           </div>
         </Card>
+
+        <Link to="/resources">
+          <Card className="hover:bg-gray-50 transition cursor-pointer">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-secondary-600 text-sm font-medium">Resources</p>
+                <p className="text-3xl font-bold text-secondary-800">Browse</p>
+              </div>
+              <Package className="w-12 h-12 text-purple-100 bg-purple-50 rounded-lg p-2" />
+            </div>
+          </Card>
+        </Link>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -362,6 +374,20 @@ export const DashboardPage = () => {
           >
             <Bell className="w-6 h-6 mx-auto mb-2 text-orange-600" />
             <p className="text-sm font-medium text-secondary-800">Post Announcements</p>
+          </Link>
+          <Link
+            to="/staff/resources"
+            className="p-4 rounded-lg bg-purple-50 hover:bg-purple-100 transition text-center"
+          >
+            <Users className="w-6 h-6 mx-auto mb-2 text-purple-600" />
+            <p className="text-sm font-medium text-secondary-800">Manage Resources</p>
+          </Link>
+          <Link
+            to="/staff/resources/allocations"
+            className="p-4 rounded-lg bg-teal-50 hover:bg-teal-100 transition text-center"
+          >
+            <ClipboardList className="w-6 h-6 mx-auto mb-2 text-teal-600" />
+            <p className="text-sm font-medium text-secondary-800">Allocations</p>
           </Link>
         </CardBody>
       </Card>
