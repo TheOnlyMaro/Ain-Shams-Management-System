@@ -33,13 +33,14 @@ CREATE TABLE resources (
   location VARCHAR(255) NOT NULL DEFAULT '',
   metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
   created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(asset_tag) WHERE asset_tag <> ''
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+  -- asset_tag uniqueness enforced by a partial unique index created below
 );
 
 CREATE INDEX idx_resources_type_id ON resources(resource_type_id);
 CREATE INDEX idx_resources_owner_id ON resources(owner_id);
-CREATE INDEX idx_resources_asset_tag ON resources(asset_tag);
+-- Partial unique index to allow multiple empty asset_tag values but ensure uniqueness when set
+CREATE UNIQUE INDEX IF NOT EXISTS ux_resources_asset_tag ON resources(asset_tag) WHERE asset_tag <> '';
 
 
 -- TABLE: users (single role per user)

@@ -24,17 +24,49 @@ async function exists(table) {
 }
 
 async function main() {
-  // Quick safety check: if users table exists, abort
-  const hasUsers = await exists('users');
-  if (hasUsers) {
-    console.log('users table already exists; skipping schema apply.');
-    return;
-  }
+  // Read schema.sql and execute statements one-by-one.
+  // This allows skipping objects that already exist instead of aborting entirely.
   const schemaPath = path.join(__dirname, '..', 'database', 'schema.sql');
   const sql = fs.readFileSync(schemaPath, 'utf8');
-  console.log('Applying schema.sql ...');
-  await pool.query(sql);
-  console.log('Schema applied successfully.');
+  console.log('Applying schema.sql (statements will be applied individually)...');
+
+  // Naive split on semicolon. Good enough for simple DDL/insert file used here.
+  const rawStatements = sql.split(';');
+  for (let i = 0; i < rawStatements.length; i++) {
+    let stmt = rawStatements[i].trim();
+    if (!stmt) continue;
+    // Skip comment-only chunks that may appear when splitting on semicolons
+    const lines = stmt.split(/\r?\n/).map(l => l.trim()).filter(Boolean);
+    if (lines.length === 0) continue;
+    if (lines.every(l => l.startsWith('--') || l.startsWith('/*') || l.startsWith('*/'))) continue;
+    // Remove leading inline comments so the statement begins with SQL
+    while (lines.length && (lines[0].startsWith('--') || lines[0].startsWith('/*') || lines[0].startsWith('*/'))) {
+      lines.shift();
+    }
+    if (lines.length === 0) continue;
+    stmt = lines.join('\n');
+    // Ensure the cleaned chunk starts with a SQL keyword we expect; otherwise skip it
+    const firstWord = (stmt.split(/\s+/)[0] || '').toUpperCase();
+    const allowed = ['CREATE','INSERT','ALTER','DROP','COMMENT','GRANT','REVOKE','SET','DO','BEGIN','COMMIT','WITH'];
+    if (!allowed.includes(firstWord)) {
+      console.log('Skipping non-SQL chunk:', firstWord || '(empty)');
+      continue;
+    }
+    try {
+      await pool.query(stmt + ';');
+    } catch (err) {
+      const msg = err && err.message ? err.message : String(err);
+      // Ignore errors that indicate the object already exists or unique dupes during idempotent runs
+      if (/already exists|duplicate key value|violates unique constraint|relation ".*" already exists/i.test(msg)) {
+        console.log('Skipping existing object or duplicate during apply:', msg.split('\n')[0]);
+        continue;
+      }
+      // Re-throw unexpected errors
+      console.error('Error applying statement:', stmt.slice(0, 200));
+      throw err;
+    }
+  }
+  console.log('Schema statements processed.');
 
   // Seed initial resource types if table exists and is empty
   const hasResourceTypes = await exists('resource_types');
