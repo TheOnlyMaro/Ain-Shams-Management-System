@@ -1,63 +1,33 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { Bell, Plus, Filter, Trash2, Edit2, Calendar, Pin, Eye, MessageSquare, Users } from 'lucide-react';
+import { useAnnouncement } from '../../context/AnnouncementContext';
+import { useAuth } from '../../context/AuthContext';
 
 const EnhancedAnnouncementsPage = () => {
-  const [announcements, setAnnouncements] = useState([
-    {
-      id: 1,
-      title: 'Spring Semester Registration Opens',
-      content: 'Registration for Spring 2025 semester will begin on January 15th. Please review course offerings and prepare your schedule.',
-      priority: 'high',
-      category: 'academic',
-      target_audience: 'students',
-      author_name: 'Academic Office',
-      author_role: 'admin',
-      is_pinned: true,
-      views_count: 156,
-      publish_date: new Date().toISOString(),
-      tags: ['registration', 'important']
-    },
-    {
-      id: 2,
-      title: 'Parent-Teacher Conference Schedule',
-      content: 'Individual parent-teacher conferences will be held on February 10-12. Please book your slot through the parent portal.',
-      priority: 'medium',
-      category: 'parent',
-      target_audience: 'parents',
-      author_name: 'Student Affairs',
-      author_role: 'staff',
-      event_date: '2025-02-10',
-      event_location: 'Main Building',
-      views_count: 89,
-      publish_date: new Date().toISOString(),
-      tags: ['conference', 'parents']
-    },
-    {
-      id: 3,
-      title: 'Career Fair 2025',
-      content: 'Join us for the annual career fair featuring 50+ companies. Bring your resume and dress professionally.',
-      priority: 'medium',
-      category: 'event',
-      target_audience: 'students',
-      author_name: 'Career Services',
-      event_date: '2025-03-15',
-      event_location: 'Student Center',
-      views_count: 234,
-      publish_date: new Date().toISOString(),
-      tags: ['career', 'networking']
-    }
-  ]);
+  const { announcements, createAnnouncement, deleteAnnouncement, updateAnnouncement, fetchAnnouncements } = useAnnouncement();
+  const { userRole, user } = useAuth();
 
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedPriority, setSelectedPriority] = useState('all');
   const [selectedAudience, setSelectedAudience] = useState('all');
   const [showNewAnnouncement, setShowNewAnnouncement] = useState(false);
-  const [viewMode, setViewMode] = useState('list'); // 'list' or 'calendar'
+  const [viewMode, setViewMode] = useState('list');
 
-  const userRole = 'admin'; // This would come from auth context
+  const [formData, setFormData] = useState({
+    title: '',
+    content: '',
+    priority: 'medium',
+    category: 'general',
+    target_audience: 'all',
+    is_pinned: false
+  });
+
+  useEffect(() => {
+    fetchAnnouncements();
+  }, [fetchAnnouncements]);
 
   const filteredAnnouncements = useMemo(() => {
-    return announcements.filter((ann) => {
+    return (announcements || []).filter((ann) => {
       if (selectedCategory !== 'all' && ann.category !== selectedCategory) return false;
       if (selectedPriority !== 'all' && ann.priority !== selectedPriority) return false;
       if (selectedAudience !== 'all' && ann.target_audience !== selectedAudience) return false;
@@ -97,16 +67,44 @@ const EnhancedAnnouncementsPage = () => {
   };
 
   const stats = useMemo(() => ({
-    total: announcements.length,
-    pinned: announcements.filter(a => a.is_pinned).length,
-    highPriority: announcements.filter(a => a.priority === 'high' || a.priority === 'urgent').length,
-    events: announcements.filter(a => a.event_date).length,
+    total: (announcements || []).length,
+    pinned: (announcements || []).filter(a => a.is_pinned).length,
+    highPriority: (announcements || []).filter(a => a.priority === 'high' || a.priority === 'urgent').length,
+    events: (announcements || []).filter(a => a.event_date).length,
   }), [announcements]);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      await createAnnouncement(formData);
+      setShowNewAnnouncement(false);
+      setFormData({
+        title: '',
+        content: '',
+        priority: 'medium',
+        category: 'general',
+        target_audience: 'all',
+        is_pinned: false
+      });
+      fetchAnnouncements();
+    } catch (err) {
+      console.error('Failed to create announcement:', err);
+    }
+  };
+
+  const handleDelete = async (id) => {
+    if (window.confirm('Are you sure you want to delete this announcement?')) {
+      try {
+        await deleteAnnouncement(id);
+      } catch (err) {
+        console.error('Failed to delete announcement:', err);
+      }
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gray-50 p-6">
       <div className="max-w-7xl mx-auto">
-        {/* Header */}
         <div className="flex items-center justify-between mb-8">
           <div>
             <h1 className="text-4xl font-bold text-gray-900">Communication Hub</h1>
@@ -123,7 +121,6 @@ const EnhancedAnnouncementsPage = () => {
           )}
         </div>
 
-        {/* Stats Cards */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
@@ -134,7 +131,7 @@ const EnhancedAnnouncementsPage = () => {
               <Bell className="w-8 h-8 text-blue-200" />
             </div>
           </div>
-          
+
           <div className="bg-white rounded-lg shadow p-6">
             <div className="flex items-center justify-between">
               <div>
@@ -166,13 +163,11 @@ const EnhancedAnnouncementsPage = () => {
           </div>
         </div>
 
-        {/* Filters */}
         <div className="bg-white rounded-lg shadow p-6 mb-6">
           <div className="flex items-center gap-2 mb-4">
-            <Filter className="w-5 h-5 text-gray-600" />
             <span className="font-semibold text-gray-800">Filters</span>
           </div>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
@@ -219,32 +214,9 @@ const EnhancedAnnouncementsPage = () => {
                 <option value="admins">Admins</option>
               </select>
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">View Mode</label>
-              <div className="flex gap-2">
-                <button
-                  onClick={() => setViewMode('list')}
-                  className={`flex-1 px-4 py-2 rounded-lg font-medium transition ${
-                    viewMode === 'list' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'
-                  }`}
-                >
-                  List
-                </button>
-                <button
-                  onClick={() => setViewMode('calendar')}
-                  className={`flex-1 px-4 py-2 rounded-lg font-medium transition ${
-                    viewMode === 'calendar' ? 'bg-blue-600 text-white' : 'bg-gray-200 text-gray-800'
-                  }`}
-                >
-                  Calendar
-                </button>
-              </div>
-            </div>
           </div>
         </div>
 
-        {/* Announcements List */}
         <div className="space-y-4">
           {filteredAnnouncements.map((announcement) => (
             <div
@@ -265,59 +237,24 @@ const EnhancedAnnouncementsPage = () => {
                     <span className="text-xs font-semibold px-3 py-1 rounded-full bg-gray-100 text-gray-700">
                       {announcement.category}
                     </span>
-                    <span className="text-xs font-semibold px-3 py-1 rounded-full bg-blue-100 text-blue-700">
-                      {announcement.target_audience}
-                    </span>
                   </div>
 
                   <p className="text-gray-700 text-base mb-4">{announcement.content}</p>
 
-                  {announcement.event_date && (
-                    <div className="flex items-center gap-4 mb-3 p-3 bg-green-50 rounded-lg border border-green-200">
-                      <Calendar className="w-5 h-5 text-green-600" />
-                      <div>
-                        <p className="text-sm font-semibold text-green-900">
-                          {new Date(announcement.event_date).toLocaleDateString('en-US', {
-                            weekday: 'long',
-                            year: 'numeric',
-                            month: 'long',
-                            day: 'numeric'
-                          })}
-                        </p>
-                        {announcement.event_location && (
-                          <p className="text-xs text-green-700">{announcement.event_location}</p>
-                        )}
-                      </div>
-                    </div>
-                  )}
-
                   <div className="flex items-center gap-6 text-sm text-gray-600">
-                    <span className="flex items-center gap-1">
-                      <Eye className="w-4 h-4" />
-                      {announcement.views_count} views
-                    </span>
                     <span>By {announcement.author_name}</span>
                     <span>
-                      {new Date(announcement.publish_date).toLocaleDateString()}
+                      {new Date(announcement.publish_date || announcement.created_at).toLocaleDateString()}
                     </span>
-                    {announcement.tags && announcement.tags.length > 0 && (
-                      <div className="flex gap-2">
-                        {announcement.tags.map((tag) => (
-                          <span key={tag} className="px-2 py-1 bg-gray-100 text-gray-700 rounded text-xs">
-                            #{tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
                   </div>
                 </div>
 
                 {(userRole === 'admin' || userRole === 'staff') && (
                   <div className="ml-4 flex gap-2">
-                    <button className="p-2 hover:bg-gray-100 rounded transition">
-                      <Edit2 className="w-4 h-4 text-gray-600" />
-                    </button>
-                    <button className="p-2 hover:bg-red-100 rounded transition">
+                    <button
+                      onClick={() => handleDelete(announcement.id)}
+                      className="p-2 hover:bg-red-100 rounded transition"
+                    >
                       <Trash2 className="w-4 h-4 text-red-600" />
                     </button>
                   </div>
@@ -330,96 +267,117 @@ const EnhancedAnnouncementsPage = () => {
             <div className="bg-white rounded-lg shadow p-12 text-center">
               <Bell className="w-16 h-16 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-600 text-lg">No announcements found</p>
-              <p className="text-gray-500">Try adjusting your filters</p>
             </div>
           )}
         </div>
       </div>
 
-      {/* New Announcement Modal */}
       {showNewAnnouncement && (
         <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="p-6 border-b border-gray-200">
-              <h2 className="text-2xl font-bold text-gray-900">Create Announcement</h2>
-            </div>
-            
-            <div className="p-6 space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
-                <input
-                  type="text"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter announcement title"
-                />
+            <form onSubmit={handleSubmit}>
+              <div className="p-6 border-b border-gray-200">
+                <h2 className="text-2xl font-bold text-gray-900">Create Announcement</h2>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Content</label>
-                <textarea
-                  rows={5}
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
-                  placeholder="Enter announcement content"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
+              <div className="p-6 space-y-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
-                  <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                    <option value="low">Low</option>
-                    <option value="medium" selected>Medium</option>
-                    <option value="high">High</option>
-                    <option value="urgent">Urgent</option>
-                  </select>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Title</label>
+                  <input
+                    type="text"
+                    required
+                    value={formData.title}
+                    onChange={(e) => setFormData({ ...formData, title: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter announcement title"
+                  />
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
-                  <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                    <option value="general">General</option>
-                    <option value="academic">Academic</option>
-                    <option value="event">Event</option>
-                    <option value="parent">Parent</option>
-                    <option value="student">Student</option>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Content</label>
+                  <textarea
+                    rows={5}
+                    required
+                    value={formData.content}
+                    onChange={(e) => setFormData({ ...formData, content: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    placeholder="Enter announcement content"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Priority</label>
+                    <select
+                      value={formData.priority}
+                      onChange={(e) => setFormData({ ...formData, priority: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="low">Low</option>
+                      <option value="medium">Medium</option>
+                      <option value="high">High</option>
+                      <option value="urgent">Urgent</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                    <select
+                      value={formData.category}
+                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                    >
+                      <option value="general">General</option>
+                      <option value="academic">Academic</option>
+                      <option value="event">Event</option>
+                      <option value="parent">Parent</option>
+                      <option value="student">Student</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Target Audience</label>
+                  <select
+                    value={formData.target_audience}
+                    onChange={(e) => setFormData({ ...formData, target_audience: e.target.value })}
+                    className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
+                  >
+                    <option value="all">All</option>
+                    <option value="students">Students</option>
+                    <option value="parents">Parents</option>
+                    <option value="staff">Staff</option>
                   </select>
                 </div>
-              </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Target Audience</label>
-                <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500">
-                  <option value="all">All</option>
-                  <option value="students">Students</option>
-                  <option value="parents">Parents</option>
-                  <option value="staff">Staff</option>
-                  <option value="admins">Admins</option>
-                </select>
-              </div>
+                <div className="flex items-center gap-2">
+                  <input
+                    type="checkbox"
+                    id="pinned"
+                    checked={formData.is_pinned}
+                    onChange={(e) => setFormData({ ...formData, is_pinned: e.target.checked })}
+                    className="w-4 h-4 text-blue-600"
+                  />
+                  <label htmlFor="pinned" className="text-sm font-medium text-gray-700">Pin this announcement</label>
+                </div>
 
-              <div className="flex items-center gap-2">
-                <input type="checkbox" id="pinned" className="w-4 h-4 text-blue-600" />
-                <label htmlFor="pinned" className="text-sm font-medium text-gray-700">Pin this announcement</label>
+                <div className="flex gap-3 pt-4">
+                  <button
+                    type="button"
+                    onClick={() => setShowNewAnnouncement(false)}
+                    className="flex-1 px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
+                  >
+                    Publish
+                  </button>
+                </div>
               </div>
-
-              <div className="flex gap-3 pt-4">
-                <button
-                  onClick={() => setShowNewAnnouncement(false)}
-                  className="flex-1 px-6 py-3 bg-gray-200 text-gray-800 rounded-lg hover:bg-gray-300 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  onClick={() => {
-                    // Handle submit
-                    setShowNewAnnouncement(false);
-                  }}
-                  className="flex-1 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition"
-                >
-                  Publish
-                </button>
-              </div>
-            </div>
+            </form>
           </div>
         </div>
       )}
