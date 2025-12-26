@@ -3,7 +3,7 @@ import { Bell, Plus, Filter, Trash2, Edit2 } from 'lucide-react';
 import { useAnnouncement } from '../../context/AnnouncementContext';
 import { useAuth } from '../../context/AuthContext';
 import { Card, CardHeader, CardBody, Button, Modal, FormInput, FormTextarea, FormSelect } from '../../components/common';
-import { formatTimeAgo, formatDate } from '../../utils/dateUtils';
+import { formatTimeAgo } from '../../utils/dateUtils';
 
 export const AnnouncementsPage = () => {
   const { userRole } = useAuth();

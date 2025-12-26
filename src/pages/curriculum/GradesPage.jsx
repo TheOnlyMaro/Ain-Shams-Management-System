@@ -1,23 +1,33 @@
 import React, { useMemo } from 'react';
-import { BarChart3, TrendingUp, BookOpen, Award } from 'lucide-react';
+import { BarChart3, TrendingUp, Award } from 'lucide-react';
 import { useCurriculum } from '../../context/CurriculumContext';
+import { useAuth } from '../../context/AuthContext';
 import { Card, CardHeader, CardBody } from '../../components/common';
 import { formatDate } from '../../utils/dateUtils';
 
 export const GradesPage = () => {
+  const { user, userRole } = useAuth();
   const { grades, courses } = useCurriculum();
 
+  const visibleGrades = useMemo(() => {
+    const isStudentView = userRole === 'student' || userRole === 'parent';
+    if (!isStudentView) return grades;
+    const uid = user?._id || user?.id;
+    if (!uid) return grades;
+    return grades.filter((g) => !g.studentId || String(g.studentId) === String(uid));
+  }, [grades, userRole, user]);
+
   const stats = useMemo(() => {
-    if (grades.length === 0) {
+    if (visibleGrades.length === 0) {
       return { average: 0, highest: 0, lowest: 0 };
     }
-    const percentages = grades.map((g) => (g.points / g.totalPoints) * 100);
+    const percentages = visibleGrades.map((g) => (g.points / g.totalPoints) * 100);
     return {
       average: (percentages.reduce((a, b) => a + b, 0) / percentages.length).toFixed(1),
       highest: Math.max(...percentages).toFixed(1),
       lowest: Math.min(...percentages).toFixed(1),
     };
-  }, [grades]);
+  }, [visibleGrades]);
 
   const gradesByColor = (letterGrade) => {
     switch (letterGrade) {
@@ -40,7 +50,7 @@ export const GradesPage = () => {
   };
 
   const groupedGrades = useMemo(() => {
-    return grades.reduce((acc, grade) => {
+    return visibleGrades.reduce((acc, grade) => {
       const courseId = grade.courseId;
       if (!acc[courseId]) {
         acc[courseId] = [];
@@ -48,7 +58,7 @@ export const GradesPage = () => {
       acc[courseId].push(grade);
       return acc;
     }, {});
-  }, [grades]);
+  }, [visibleGrades]);
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -93,17 +103,17 @@ export const GradesPage = () => {
             <div className="flex items-center justify-between">
               <div>
                 <p className="text-secondary-600 text-sm">Graded Assignments</p>
-                <p className="text-3xl font-bold text-secondary-800">{grades.length}</p>
+                <p className="text-3xl font-bold text-secondary-800">{visibleGrades.length}</p>
               </div>
               <Award className="w-8 h-8 text-purple-200" />
             </div>
           </Card>
         </div>
 
-        {grades.length > 0 ? (
+        {visibleGrades.length > 0 ? (
           <div className="space-y-6">
             {Object.entries(groupedGrades).map(([courseId, courseGrades]) => {
-              const course = courses.find((c) => c.id === courseId);
+              const course = courses.find((c) => String(c.id) === String(courseId));
               return (
                 <Card key={courseId}>
                   <CardHeader>

@@ -3,22 +3,23 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, FileText, Users, Clock, BookOpen, Download, Trash2, Edit2, Plus } from 'lucide-react';
 import { useCurriculum } from '../../context/CurriculumContext';
 import { useAuth } from '../../context/AuthContext';
-import { Card, CardHeader, CardBody, CardFooter, Button, Modal } from '../../components/common';
+import { Card, CardHeader, CardBody, Button, Modal, PageLoader } from '../../components/common';
 import { formatDate, formatTimeAgo } from '../../utils/dateUtils';
 
 export const CourseDetailPage = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const { userRole } = useAuth();
-  const { getCourseById, getMaterialsByCourse, getAssignmentsByCourse } = useCurriculum();
+  const { courses, getCourseById, getMaterialsByCourse, getAssignmentsByCourse } = useCurriculum();
   const [showUploadModal, setShowUploadModal] = useState(false);
 
   const course = useMemo(() => getCourseById(courseId), [courseId, getCourseById]);
   const materials = useMemo(() => getMaterialsByCourse(courseId), [courseId, getMaterialsByCourse]);
-  const assignments = useMemo(
-    () => getAssignmentsByCourse(courseId),
-    [courseId, getAssignmentsByCourse]
-  );
+  const assignments = useMemo(() => getAssignmentsByCourse(courseId), [courseId, getAssignmentsByCourse]);
+
+  if (!course && courses.length === 0) {
+    return <PageLoader message="Loading course..." />;
+  }
 
   if (!course) {
     return (
