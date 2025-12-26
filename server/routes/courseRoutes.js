@@ -5,7 +5,7 @@ const { authenticate, authorizeRole, optionalAuthenticate } = require('../middle
 // Switch to SQL-based controller; legacy Mongo controller kept for reference
 const courseController = require('../controllers-sql/courseController');
 const validateRequest = require('../middleware/validateRequest');
-const announcementRoutes = require('./routes/announcementRoutes');
+
 
 const router = express.Router();
 

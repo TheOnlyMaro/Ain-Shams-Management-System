@@ -289,3 +289,66 @@ WHERE v.entity_type = 'course';
 -- Embedded documents → separate relational tables
 -- Core entities (users, courses, assignments, grades, applications) = relational only
 -- Typed EAV for dynamic/optional metadata only; course metadata exposed via vw_course_metadata
+
+-- ============================================================================
+-- QUIZ SUBSYSTEM (Added later)
+-- ============================================================================
+
+-- TABLE: quizzes
+CREATE TABLE IF NOT EXISTS quizzes (
+  id SERIAL PRIMARY KEY,
+  course_id INTEGER NOT NULL REFERENCES courses(id) ON DELETE CASCADE,
+  creator_id INTEGER NOT NULL REFERENCES users(id) ON DELETE SET NULL,
+  title VARCHAR(255) NOT NULL,
+  description TEXT,
+  due_date TIMESTAMP,
+  time_limit_minutes INTEGER DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_quizzes_course_id ON quizzes(course_id);
+
+-- TABLE: quiz_questions
+CREATE TABLE IF NOT EXISTS quiz_questions (
+  id SERIAL PRIMARY KEY,
+  quiz_id INTEGER NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
+  question_text TEXT NOT NULL,
+  question_type VARCHAR(50) NOT NULL CHECK (question_type IN ('mcq', 'short_answer')),
+  options JSONB DEFAULT '[]'::jsonb, -- Array of strings for MCQ options
+  correct_answer TEXT, -- For MCQ, the correct option string. For short answer, the expected text (optional validation)
+  points INTEGER NOT NULL DEFAULT 1,
+  order_index INTEGER NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_quiz_questions_quiz_id ON quiz_questions(quiz_id);
+
+-- TABLE: quiz_submissions
+CREATE TABLE IF NOT EXISTS quiz_submissions (
+  id SERIAL PRIMARY KEY,
+  quiz_id INTEGER NOT NULL REFERENCES quizzes(id) ON DELETE CASCADE,
+  student_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  started_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  submitted_at TIMESTAMP,
+  score DECIMAL(5,2) DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(quiz_id, student_id) -- One submission per student per quiz for now
+);
+
+CREATE INDEX IF NOT EXISTS idx_quiz_submissions_quiz_id ON quiz_submissions(quiz_id);
+CREATE INDEX IF NOT EXISTS idx_quiz_submissions_student_id ON quiz_submissions(student_id);
+
+-- TABLE: quiz_answers
+CREATE TABLE IF NOT EXISTS quiz_answers (
+  id SERIAL PRIMARY KEY,
+  submission_id INTEGER NOT NULL REFERENCES quiz_submissions(id) ON DELETE CASCADE,
+  question_id INTEGER NOT NULL REFERENCES quiz_questions(id) ON DELETE CASCADE,
+  answer_text TEXT,
+  is_correct BOOLEAN DEFAULT NULL,
+  points_awarded DECIMAL(5,2) DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  UNIQUE(submission_id, question_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_quiz_answers_submission_id ON quiz_answers(submission_id);

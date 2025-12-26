@@ -1,0 +1,142 @@
+[
+  {
+    "id": 30,
+    "name": "Test Student",
+    "email": "student0.525002074152863@test.com",
+    "role_id": 1,
+    "created_at": "2025-12-26T11:01:05.765Z"
+  },
+  {
+    "id": 29,
+    "name": "Test Staff",
+    "email": "staff0.775104641650489@test.com",
+    "role_id": 3,
+    "created_at": "2025-12-26T11:01:05.658Z"
+  },
+  {
+    "id": 28,
+    "name": "Test Student",
+    "email": "student0.567914718862455@test.com",
+    "role_id": 1,
+    "created_at": "2025-12-26T10:57:52.260Z"
+  },
+  {
+    "id": 27,
+    "name": "Test Staff",
+    "email": "staff0.288598496154142@test.com",
+    "role_id": 3,
+    "created_at": "2025-12-26T10:57:51.550Z"
+  },
+  {
+    "id": 26,
+    "name": "Test Student",
+    "email": "student0.181725694410838@test.com",
+    "role_id": 1,
+    "created_at": "2025-12-26T10:52:31.214Z"
+  },
+  {
+    "id": 25,
+    "name": "Test Staff",
+    "email": "staff0.0264130444642567@test.com",
+    "role_id": 3,
+    "created_at": "2025-12-26T10:52:31.094Z"
+  },
+  {
+    "id": 24,
+    "name": "Test Student",
+    "email": "student0.174352122037394@test.com",
+    "role_id": 1,
+    "created_at": "2025-12-26T10:51:41.125Z"
+  },
+  {
+    "id": 23,
+    "name": "Test Staff",
+    "email": "staff0.294575292164881@test.com",
+    "role_id": 3,
+    "created_at": "2025-12-26T10:51:40.967Z"
+  },
+  {
+    "id": 22,
+    "name": "Test Student",
+    "email": "student0.506132805352986@test.com",
+    "role_id": 1,
+    "created_at": "2025-12-26T10:50:49.111Z"
+  },
+  {
+    "id": 21,
+    "name": "Test Staff",
+    "email": "staff0.894215947065857@test.com",
+    "role_id": 3,
+    "created_at": "2025-12-26T10:50:48.908Z"
+  },
+  {
+    "id": 20,
+    "name": "Test Student",
+    "email": "student0.616984297482997@test.com",
+    "role_id": 1,
+    "created_at": "2025-12-26T10:50:04.973Z"
+  },
+  {
+    "id": 19,
+    "name": "Test Staff",
+    "email": "staff0.815432274435205@test.com",
+    "role_id": 3,
+    "created_at": "2025-12-26T10:50:04.043Z"
+  },
+  {
+    "id": 18,
+    "name": "Admin User",
+    "email": "admin@test.com",
+    "role_id": 2,
+    "created_at": "2025-12-25T15:31:42.737Z"
+  },
+  {
+    "id": 17,
+    "name": "alo",
+    "email": "zlo@gmail.cpm",
+    "role_id": 3,
+    "created_at": "2025-12-25T15:12:40.490Z"
+  },
+  {
+    "id": 16,
+    "name": "john alison",
+    "email": "demojohn@example.com",
+    "role_id": 2,
+    "created_at": "2025-12-25T15:12:03.232Z"
+  },
+  {
+    "id": 15,
+    "name": "Staff 1",
+    "email": "staff@gmail.com",
+    "role_id": 3,
+    "created_at": "2025-12-20T09:01:51.547Z"
+  },
+  {
+    "id": 14,
+    "name": "Ahmed",
+    "email": "ah@gmail.com",
+    "role_id": 1,
+    "created_at": "2025-12-18T14:10:48.553Z"
+  },
+  {
+    "id": 13,
+    "name": "Mariam",
+    "email": "testing@gmail.com",
+    "role_id": 2,
+    "created_at": "2025-12-18T10:45:01.587Z"
+  },
+  {
+    "id": 2,
+    "name": "Testing Test",
+    "email": "test@gmail.com",
+    "role_id": 1,
+    "created_at": "2025-12-18T10:09:01.232Z"
+  },
+  {
+    "id": 1,
+    "name": "Test User",
+    "email": "test1766059437597@example.com",
+    "role_id": 1,
+    "created_at": "2025-12-18T10:03:58.764Z"
+  }
+]

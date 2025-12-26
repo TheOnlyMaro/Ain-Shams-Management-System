@@ -3,7 +3,7 @@ const router = express.Router();
 // Switch to SQL-based controller; legacy Mongo controller kept for reference
 const authController = require('../controllers-sql/authController');
 const { authenticate } = require('../middleware/authMiddleware');
-const announcementRoutes = require('./routes/announcementRoutes');
+
 
 router.post('/signup', authController.signup);
 router.post('/login', authController.login);
