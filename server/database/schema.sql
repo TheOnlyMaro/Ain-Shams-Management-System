@@ -63,6 +63,24 @@ CREATE INDEX IF NOT EXISTS idx_resource_allocations_resource_id ON resource_allo
 CREATE INDEX IF NOT EXISTS idx_resource_allocations_allocated_to_user_id ON resource_allocations(allocated_to_user_id);
 CREATE INDEX IF NOT EXISTS idx_resource_allocations_allocated_by ON resource_allocations(allocated_by);
 
+-- TABLE: leave_requests (staff leave management)
+CREATE TABLE IF NOT EXISTS leave_requests (
+  id SERIAL PRIMARY KEY,
+  user_id INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  start_date TIMESTAMP NOT NULL,
+  end_date TIMESTAMP NOT NULL,
+  leave_type VARCHAR(50) NOT NULL DEFAULT 'vacation', -- vacation, sick, personal, unpaid, other
+  reason TEXT NOT NULL DEFAULT '',
+  status VARCHAR(50) NOT NULL DEFAULT 'pending' CHECK (status IN ('pending','approved','denied','cancelled')),
+  approver_id INTEGER REFERENCES users(id) ON DELETE SET NULL,
+  approver_note TEXT NOT NULL DEFAULT '',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX IF NOT EXISTS idx_leave_requests_user_id ON leave_requests(user_id);
+CREATE INDEX IF NOT EXISTS idx_leave_requests_status ON leave_requests(status);
+
 
 -- TABLE: users (single role per user)
 CREATE TABLE users (
