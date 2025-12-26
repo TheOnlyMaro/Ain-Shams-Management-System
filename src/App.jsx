@@ -1,5 +1,5 @@
-import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+
 import { AuthProvider } from './context/AuthContext';
 import { CurriculumProvider } from './context/CurriculumContext';
 import { AdmissionProvider } from './context/AdmissionContext';
@@ -8,26 +8,22 @@ import { CampusProvider } from './context/CampusContext';
 import { Navbar } from './components/common';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
+// Public pages (NAMED exports)
 import { HomePage } from './pages/HomePage';
 import { LoginPage } from './pages/auth/LoginPage';
 import { SignupPage } from './pages/auth/SignupPage';
-import { DashboardPage } from './pages/DashboardPage';
 
+// User pages (NAMED exports)
+import { DashboardPage } from './pages/DashboardPage';
 import { CoursesPage } from './pages/curriculum/CoursesPage';
 import { CourseDetailPage } from './pages/curriculum/CourseDetailPage';
-import { CourseMaterialsPage } from './pages/curriculum/CourseMaterialsPage';
-import { CourseAssignmentsPage } from './pages/curriculum/CourseAssignmentsPage';
-import { AssignmentsPage } from './pages/curriculum/AssignmentsPage';
 import { AssignmentDetailPage } from './pages/curriculum/AssignmentDetailPage';
-import { StaffAssignmentsPage } from './pages/curriculum/StaffAssignmentsPage';
 import { GradesPage } from './pages/curriculum/GradesPage';
 import { StaffGradesPage } from './pages/curriculum/StaffGradesPage';
-import { MaterialsPage } from './pages/curriculum/MaterialsPage';
 
 import { AdmissionPage } from './pages/admission/AdmissionPage';
 
-import { AnnouncementsPage } from './pages/community/AnnouncementsPage';
-
+// Admin pages (NAMED exports ✅)
 import { AdminApplicationsPage } from './pages/admin/AdminApplicationsPage';
 import { AdminCoursesPage } from './pages/admin/AdminCoursesPage';
 
@@ -41,7 +37,12 @@ import { PayrollPage } from './pages/campus/PayrollPage';
 import { ResearchHubPage } from './pages/campus/ResearchHubPage';
 import { PublishResearchPage } from './pages/campus/PublishResearchPage';
 
-export const App = () => {
+// Community pages (DEFAULT exports ✅)
+import MessagesPage from './pages/messages/MessagesPage';
+import EnhancedAnnouncementsPage from './pages/community/EnhancedAnnouncementsPage';
+import { AnnouncementsPage } from './pages/community/AnnouncementsPage';
+
+function App() {
   return (
     <Router>
       <AuthProvider>
@@ -84,33 +85,6 @@ export const App = () => {
                     />
 
                     <Route
-                      path="/course-materials"
-                      element={
-                        <ProtectedRoute>
-                          <CourseMaterialsPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    <Route
-                      path="/course-assignments"
-                      element={
-                        <ProtectedRoute>
-                          <CourseAssignmentsPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    <Route
-                      path="/assignments"
-                      element={
-                        <ProtectedRoute>
-                          <AssignmentsPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    <Route
                       path="/assignments/:assignmentId"
                       element={
                         <ProtectedRoute>
@@ -129,29 +103,16 @@ export const App = () => {
                     />
 
                     <Route
-                      path="/materials"
+                      path="/admission"
                       element={
-                        <ProtectedRoute>
-                          <MaterialsPage />
-                        </ProtectedRoute>
+                        <AdmissionPage />
                       }
                     />
-
-                    <Route path="/admission" element={<AdmissionPage />} />
 
                     <Route
                       path="/announcements"
                       element={
                         <ProtectedRoute>
-                          <AnnouncementsPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    <Route
-                      path="/admin/announcements"
-                      element={
-                        <ProtectedRoute roles={['admin', 'staff']}>
                           <AnnouncementsPage />
                         </ProtectedRoute>
                       }
@@ -189,24 +150,6 @@ export const App = () => {
                       element={
                         <ProtectedRoute roles={['staff']}>
                           <CoursesPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    <Route
-                      path="/staff/assignments"
-                      element={
-                        <ProtectedRoute roles={['staff']}>
-                          <StaffAssignmentsPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    <Route
-                      path="/staff/materials"
-                      element={
-                        <ProtectedRoute roles={['staff']}>
-                          <MaterialsPage />
                         </ProtectedRoute>
                       }
                     />
@@ -309,8 +252,9 @@ export const App = () => {
           </AdmissionProvider>
         </CurriculumProvider>
       </AuthProvider>
-    </Router>
+    </Router >
   );
-};
+}
 
 export default App;
+

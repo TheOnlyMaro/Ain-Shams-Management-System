@@ -4,9 +4,13 @@ import { useCampus } from '../../context/CampusContext';
 import { Card, CardHeader, CardBody, Button, FormSelect } from '../../components/common';
 
 export const AdminBookingRequestsPage = () => {
-  const { classrooms, bookings, reviewBookingRequest } = useCampus();
+  const { classrooms, bookings, reviewBookingRequest, fetchBookings } = useCampus();
   const [filterStatus, setFilterStatus] = useState('pending');
   const [error, setError] = useState(null);
+
+  React.useEffect(() => {
+    fetchBookings();
+  }, [fetchBookings]);
 
   const roomName = (id) => classrooms.find((c) => c.id === id)?.name || id;
 
@@ -49,7 +53,7 @@ export const AdminBookingRequestsPage = () => {
                 onChange={(e) => setFilterStatus(e.target.value || 'pending')}
                 options={[
                   { label: 'Pending', value: 'pending' },
-                  { label: 'Approved', value: 'approved' },
+                  { label: 'Confirmed', value: 'confirmed' },
                   { label: 'Rejected', value: 'rejected' },
                   { label: 'Cancelled', value: 'cancelled' },
                   { label: 'All', value: 'all' },
@@ -70,15 +74,14 @@ export const AdminBookingRequestsPage = () => {
                         <Building2 className="w-5 h-5 text-primary-600" />
                         <h2 className="text-lg font-bold text-secondary-800">{roomName(b.classroomId)}</h2>
                         <span
-                          className={`text-xs px-2 py-1 rounded-full font-semibold ${
-                            b.status === 'approved'
-                              ? 'bg-green-100 text-green-700'
-                              : b.status === 'rejected'
+                          className={`text-xs px-2 py-1 rounded-full font-semibold ${b.status === 'confirmed'
+                            ? 'bg-green-100 text-green-700'
+                            : b.status === 'rejected'
                               ? 'bg-red-100 text-red-700'
                               : b.status === 'cancelled'
-                              ? 'bg-gray-100 text-gray-700'
-                              : 'bg-yellow-100 text-yellow-700'
-                          }`}
+                                ? 'bg-gray-100 text-gray-700'
+                                : 'bg-yellow-100 text-yellow-700'
+                            }`}
                         >
                           {b.status}
                         </span>

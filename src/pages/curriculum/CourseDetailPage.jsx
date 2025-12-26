@@ -3,19 +3,144 @@ import { useParams, Link, useNavigate } from 'react-router-dom';
 import { ArrowLeft, FileText, Users, Clock, BookOpen, Download, Trash2, Edit2, Plus } from 'lucide-react';
 import { useCurriculum } from '../../context/CurriculumContext';
 import { useAuth } from '../../context/AuthContext';
-import { Card, CardHeader, CardBody, Button, Modal, PageLoader } from '../../components/common';
+import { Card, CardHeader, CardBody, Button, Modal, PageLoader, FormInput, FormSelect, FormTextarea } from '../../components/common';
 import { formatDate, formatTimeAgo } from '../../utils/dateUtils';
+
+const downloadMaterial = async (material) => {
+  const url = material?.fileUrl;
+  if (!url) return;
+
+  window.open(url, '_blank', 'noopener,noreferrer');
+};
 
 export const CourseDetailPage = () => {
   const { courseId } = useParams();
   const navigate = useNavigate();
   const { userRole } = useAuth();
-  const { courses, getCourseById, getMaterialsByCourse, getAssignmentsByCourse } = useCurriculum();
-  const [showUploadModal, setShowUploadModal] = useState(false);
+  const {
+    courses,
+    getCourseById,
+    getMaterialsByCourse,
+    getAssignmentsByCourse,
+    uploadMaterial,
+    deleteMaterial,
+    createAssignment,
+    deleteAssignment,
+  } = useCurriculum();
+
+  const [showMaterialUploadModal, setShowMaterialUploadModal] = useState(false);
+  const [showAssignmentCreateModal, setShowAssignmentCreateModal] = useState(false);
+
+  const [materialError, setMaterialError] = useState(null);
+  const [assignmentError, setAssignmentError] = useState(null);
+
+  const [materialForm, setMaterialForm] = useState({
+    title: '',
+    type: 'pdf',
+    description: '',
+    file: null,
+  });
+
+  const [assignmentForm, setAssignmentForm] = useState({
+    title: '',
+    description: '',
+    dueDate: '',
+    totalPoints: 100,
+  });
 
   const course = useMemo(() => getCourseById(courseId), [courseId, getCourseById]);
   const materials = useMemo(() => getMaterialsByCourse(courseId), [courseId, getMaterialsByCourse]);
   const assignments = useMemo(() => getAssignmentsByCourse(courseId), [courseId, getAssignmentsByCourse]);
+
+  const canManage = userRole === 'staff' || userRole === 'admin';
+
+  const handleMaterialUpload = async (e) => {
+    e.preventDefault();
+    setMaterialError(null);
+
+    if (!materialForm.title || materialForm.title.trim() === '') {
+      setMaterialError('Title is required.');
+      return;
+    }
+
+    try {
+      const fileSize = materialForm.file ? `${Math.max(1, Math.ceil(materialForm.file.size / 1024))} KB` : '—';
+      let fileUrl = null;
+
+      if (materialForm.file) {
+        fileUrl = `/uploads/materials/${Date.now()}_${materialForm.file.name}`;
+      }
+
+      await uploadMaterial(courseId, {
+        title: materialForm.title,
+        type: materialForm.type,
+        description: materialForm.description,
+        fileSize,
+        fileName: materialForm.file?.name || null,
+        fileUrl: fileUrl,
+      });
+
+      setMaterialForm({ title: '', type: 'pdf', description: '', file: null });
+      setShowMaterialUploadModal(false);
+    } catch (err) {
+      if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+        const errorMessages = err.response.data.errors.map((e) => e.msg || e.message).join(', ');
+        setMaterialError(errorMessages || 'Validation failed');
+      } else {
+        setMaterialError(err.response?.data?.message || err.message || 'Failed to upload material');
+      }
+    }
+  };
+
+  const handleAssignmentCreate = async (e) => {
+    e.preventDefault();
+    setAssignmentError(null);
+
+    if (!assignmentForm.title || !assignmentForm.dueDate) {
+      setAssignmentError('Title and due date are required.');
+      return;
+    }
+
+    try {
+      await createAssignment({
+        courseId: courseId,
+        title: assignmentForm.title,
+        description: assignmentForm.description,
+        dueDate: assignmentForm.dueDate,
+        totalPoints: Number(assignmentForm.totalPoints || 100),
+      });
+
+      setAssignmentForm({ title: '', description: '', dueDate: '', totalPoints: 100 });
+      setShowAssignmentCreateModal(false);
+    } catch (err) {
+      if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+        const errorMessages = err.response.data.errors.map((e) => e.msg || e.message).join(', ');
+        setAssignmentError(errorMessages || 'Validation failed');
+      } else {
+        setAssignmentError(err.response?.data?.message || err.message || 'Failed to create assignment');
+      }
+    }
+  };
+
+  const handleDeleteMaterial = async (materialId) => {
+    if (window.confirm('Are you sure you want to delete this material?')) {
+      try {
+        await deleteMaterial(materialId);
+      } catch (err) {
+        alert(err.response?.data?.message || err.message || 'Failed to delete material');
+      }
+    }
+  };
+
+  const handleDeleteAssignment = async (assignmentId) => {
+    if (window.confirm('Are you sure you want to delete this assignment?')) {
+      try {
+        await deleteAssignment(assignmentId);
+      } catch (err) {
+        alert(err.response?.data?.message || err.message || 'Failed to delete assignment');
+      }
+    }
+  };
 
   if (!course && courses.length === 0) {
     return <PageLoader message="Loading course..." />;
@@ -124,11 +249,11 @@ export const CourseDetailPage = () => {
             <Card>
               <CardHeader className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-secondary-800">Course Materials</h2>
-                {userRole === 'staff' && (
+                {canManage && (
                   <Button
                     variant="primary"
                     size="sm"
-                    onClick={() => setShowUploadModal(true)}
+                    onClick={() => setShowMaterialUploadModal(true)}
                     className="flex items-center gap-2"
                   >
                     <Plus className="w-4 h-4" />
@@ -154,19 +279,23 @@ export const CourseDetailPage = () => {
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button variant="outline" size="sm" className="flex items-center gap-1">
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="flex items-center gap-1"
+                            onClick={() => downloadMaterial(material)}
+                          >
                             <Download className="w-4 h-4" />
                             Download
                           </Button>
-                          {userRole === 'staff' && (
-                            <>
-                              <Button variant="outline" size="sm">
-                                <Edit2 className="w-4 h-4" />
-                              </Button>
-                              <Button variant="danger" size="sm">
-                                <Trash2 className="w-4 h-4" />
-                              </Button>
-                            </>
+                          {canManage && (
+                            <Button
+                              variant="danger"
+                              size="sm"
+                              onClick={() => handleDeleteMaterial(material.id)}
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </Button>
                           )}
                         </div>
                       </div>
@@ -182,8 +311,19 @@ export const CourseDetailPage = () => {
             </Card>
 
             <Card>
-              <CardHeader>
+              <CardHeader className="flex items-center justify-between">
                 <h2 className="text-lg font-bold text-secondary-800">Assignments</h2>
+                {canManage && (
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => setShowAssignmentCreateModal(true)}
+                    className="flex items-center gap-2"
+                  >
+                    <Plus className="w-4 h-4" />
+                    Create
+                  </Button>
+                )}
               </CardHeader>
               <CardBody>
                 {assignments.length > 0 ? (
@@ -201,11 +341,22 @@ export const CourseDetailPage = () => {
                               Due: {formatDate(assignment.dueDate)} • {assignment.totalPoints} points
                             </p>
                           </div>
-                          <Link to={`/assignments/${assignment.id}`}>
-                            <Button variant="outline" size="sm">
-                              View
-                            </Button>
-                          </Link>
+                          <div className="flex items-center gap-2">
+                            <Link to={`/assignments/${assignment.id}`}>
+                              <Button variant="outline" size="sm">
+                                View
+                              </Button>
+                            </Link>
+                            {canManage && (
+                              <Button
+                                variant="danger"
+                                size="sm"
+                                onClick={() => handleDeleteAssignment(assignment.id)}
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -250,37 +401,121 @@ export const CourseDetailPage = () => {
         </div>
       </div>
 
-      <Modal isOpen={showUploadModal} onClose={() => setShowUploadModal(false)} title="Upload Material">
-        <div className="space-y-4">
-          <div>
-            <label className="block text-sm font-medium text-secondary-700 mb-2">Material Title</label>
-            <input
-              type="text"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-              placeholder="Enter material title"
-            />
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-secondary-700 mb-2">File Type</label>
-            <select className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500">
-              <option>Select type</option>
-              <option value="pdf">PDF</option>
-              <option value="video">Video</option>
-              <option value="document">Document</option>
-              <option value="presentation">Presentation</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-secondary-700 mb-2">Upload File</label>
-            <input
-              type="file"
-              className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
-            />
-          </div>
+      <Modal
+        isOpen={showMaterialUploadModal}
+        onClose={() => {
+          setShowMaterialUploadModal(false);
+          setMaterialError(null);
+        }}
+        title="Upload Material"
+        size="lg"
+      >
+        <form onSubmit={handleMaterialUpload} className="space-y-4">
+          {materialError && (
+            <div className="p-3 rounded-lg bg-red-50 text-red-700 border border-red-200">{materialError}</div>
+          )}
+
+          <FormInput
+            label="Material Title"
+            name="title"
+            placeholder="e.g., Lecture 1 Slides"
+            value={materialForm.title}
+            onChange={(e) => setMaterialForm((p) => ({ ...p, title: e.target.value }))}
+            required
+          />
+
+          <FormSelect
+            label="Type"
+            name="type"
+            value={materialForm.type}
+            onChange={(e) => setMaterialForm((p) => ({ ...p, type: e.target.value }))}
+            options={[
+              { label: 'PDF', value: 'pdf' },
+              { label: 'Document', value: 'document' },
+              { label: 'Presentation', value: 'presentation' },
+              { label: 'Video', value: 'video' },
+              { label: 'Link', value: 'link' },
+            ]}
+          />
+
+          <FormTextarea
+            label="Description (optional)"
+            name="description"
+            rows={3}
+            placeholder="Short description"
+            value={materialForm.description}
+            onChange={(e) => setMaterialForm((p) => ({ ...p, description: e.target.value }))}
+          />
+
+          <FormInput
+            label="File (optional)"
+            name="file"
+            type="file"
+            onChange={(e) => setMaterialForm((p) => ({ ...p, file: e.target.files?.[0] || null }))}
+          />
+
           <Button variant="primary" className="w-full">
-            Upload Material
+            Upload
           </Button>
-        </div>
+        </form>
+      </Modal>
+
+      <Modal
+        isOpen={showAssignmentCreateModal}
+        onClose={() => {
+          setShowAssignmentCreateModal(false);
+          setAssignmentError(null);
+        }}
+        title="Create Assignment"
+        size="lg"
+      >
+        <form onSubmit={handleAssignmentCreate} className="space-y-4">
+          {assignmentError && (
+            <div className="p-3 rounded-lg bg-red-50 text-red-700 border border-red-200">{assignmentError}</div>
+          )}
+
+          <FormInput
+            label="Title"
+            name="title"
+            placeholder="e.g., Week 3 Homework"
+            value={assignmentForm.title}
+            onChange={(e) => setAssignmentForm((p) => ({ ...p, title: e.target.value }))}
+            required
+          />
+
+          <FormTextarea
+            label="Description"
+            name="description"
+            rows={4}
+            placeholder="Instructions for students"
+            value={assignmentForm.description}
+            onChange={(e) => setAssignmentForm((p) => ({ ...p, description: e.target.value }))}
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <FormInput
+              label="Due Date"
+              name="dueDate"
+              type="date"
+              value={assignmentForm.dueDate}
+              onChange={(e) => setAssignmentForm((p) => ({ ...p, dueDate: e.target.value }))}
+              required
+            />
+
+            <FormInput
+              label="Total Points"
+              name="totalPoints"
+              type="number"
+              min={1}
+              value={assignmentForm.totalPoints}
+              onChange={(e) => setAssignmentForm((p) => ({ ...p, totalPoints: e.target.value }))}
+            />
+          </div>
+
+          <Button variant="primary" className="w-full">
+            Create
+          </Button>
+        </form>
       </Modal>
     </div>
   );

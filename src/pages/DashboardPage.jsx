@@ -132,10 +132,10 @@ export const DashboardPage = () => {
           </CardBody>
           <CardFooter>
             <Link
-              to="/course-assignments"
+              to="/courses"
               className="text-primary-600 hover:text-primary-700 font-medium text-sm"
             >
-              View All Assignments →
+              View Course Details →
             </Link>
           </CardFooter>
         </Card>
@@ -341,13 +341,13 @@ export const DashboardPage = () => {
         <CardHeader>
           <h2 className="text-lg font-bold text-secondary-800">Quick Actions</h2>
         </CardHeader>
-        <CardBody className="grid grid-cols-2 md:grid-cols-4 gap-4">
+        <CardBody className="grid grid-cols-2 md:grid-cols-3 gap-4">
           <Link
-            to="/staff/materials"
-            className="p-4 rounded-lg bg-primary-50 hover:bg-primary-100 transition text-center"
+            to="/staff/courses"
+            className="p-4 rounded-lg bg-green-50 hover:bg-green-100 transition text-center"
           >
-            <FileText className="w-6 h-6 mx-auto mb-2 text-primary-600" />
-            <p className="text-sm font-medium text-secondary-800">Upload Materials</p>
+            <BookOpen className="w-6 h-6 mx-auto mb-2 text-green-600" />
+            <p className="text-sm font-medium text-secondary-800">Manage Courses</p>
           </Link>
           <Link
             to="/staff/grades"
@@ -355,13 +355,6 @@ export const DashboardPage = () => {
           >
             <TrendingUp className="w-6 h-6 mx-auto mb-2 text-blue-600" />
             <p className="text-sm font-medium text-secondary-800">Grade Assignments</p>
-          </Link>
-          <Link
-            to="/staff/courses"
-            className="p-4 rounded-lg bg-green-50 hover:bg-green-100 transition text-center"
-          >
-            <BookOpen className="w-6 h-6 mx-auto mb-2 text-green-600" />
-            <p className="text-sm font-medium text-secondary-800">View Courses</p>
           </Link>
           <Link
             to="/admin/announcements"

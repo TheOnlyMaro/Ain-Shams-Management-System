@@ -1,5 +1,4 @@
-import React, { useMemo, useState, useEffect } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import React, { useMemo, useState } from 'react';
 import { Download, FileText, Plus, Trash2, BookOpen } from 'lucide-react';
 import { useCurriculum } from '../../context/CurriculumContext';
 import { useAuth } from '../../context/AuthContext';
@@ -20,10 +19,8 @@ const downloadPlaceholder = (material) => {
 export const MaterialsPage = () => {
   const { userRole } = useAuth();
   const { courses, materials, uploadMaterial, deleteMaterial } = useCurriculum();
-  const [searchParams, setSearchParams] = useSearchParams();
 
-  const courseIdFromUrl = searchParams.get('courseId');
-  const [filterCourseId, setFilterCourseId] = useState(courseIdFromUrl || 'all');
+  const [filterCourseId, setFilterCourseId] = useState('all');
   const [showUpload, setShowUpload] = useState(false);
   const [error, setError] = useState(null);
 
@@ -48,26 +45,57 @@ export const MaterialsPage = () => {
 
   const canManage = userRole === 'staff' || userRole === 'admin';
 
-  const handleUpload = (e) => {
+  const handleUpload = async (e) => {
     e.preventDefault();
     setError(null);
 
-    if (!form.courseId || !form.title) {
-      setError('Course and title are required.');
+    if (!form.courseId || form.courseId === '' || form.courseId === 'all') {
+      setError('Please select a course.');
+      return;
+    }
+
+    if (!form.title || form.title.trim() === '') {
+      setError('Title is required.');
+      return;
+    }
+    
+    // Ensure courseId is a valid number
+    const courseIdNum = parseInt(form.courseId, 10);
+    if (isNaN(courseIdNum) || courseIdNum <= 0) {
+      setError(`Invalid course ID: ${form.courseId}`);
       return;
     }
 
     const fileSize = form.file ? `${Math.max(1, Math.ceil(form.file.size / 1024))} KB` : '—';
 
-    uploadMaterial(form.courseId, {
-      title: form.title,
-      type: form.type,
-      fileSize,
-      fileName: form.file?.name || null,
-    });
+    try {
+      // Generate fileUrl - if file is provided, use blob URL temporarily
+      // In production, upload file to storage first and get the actual URL
+      let fileUrl = null;
+      if (form.file) {
+        // For now, use a placeholder path. In production, upload file first
+        fileUrl = `/uploads/materials/${Date.now()}_${form.file.name}`;
+      }
+      
+      await uploadMaterial(courseIdNum, {
+        title: form.title,
+        type: form.type,
+        fileSize,
+        fileName: form.file?.name || null,
+        fileUrl: fileUrl,
+      });
 
-    setForm({ courseId: '', title: '', type: 'pdf', file: null });
-    setShowUpload(false);
+      setForm({ courseId: '', title: '', type: 'pdf', file: null });
+      setShowUpload(false);
+    } catch (err) {
+      // Show validation errors if available
+      if (err.response?.data?.errors && Array.isArray(err.response.data.errors)) {
+        const errorMessages = err.response.data.errors.map((e) => e.msg || e.message).join(', ');
+        setError(errorMessages || 'Validation failed');
+      } else {
+        setError(err.response?.data?.message || err.message || 'Failed to upload material');
+      }
+    }
   };
 
   return (
@@ -134,7 +162,19 @@ export const MaterialsPage = () => {
                         Download
                       </Button>
                       {canManage && (
-                        <Button variant="danger" size="sm" onClick={() => deleteMaterial(m.id)}>
+                        <Button
+                          variant="danger"
+                          size="sm"
+                          onClick={async () => {
+                            if (window.confirm('Are you sure you want to delete this material?')) {
+                              try {
+                                await deleteMaterial(m.id);
+                              } catch (err) {
+                                alert(err.response?.data?.message || err.message || 'Failed to delete material');
+                              }
+                            }
+                          }}
+                        >
                           <Trash2 className="w-4 h-4" />
                         </Button>
                       )}
