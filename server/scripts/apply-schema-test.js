@@ -62,6 +62,42 @@ async function main() {
     } catch (e) {
       // best-effort; ignore
     }
+    // Proactively create performance tables as well
+    try {
+      await client.query(`CREATE TABLE IF NOT EXISTS performance_reviews (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER NOT NULL,
+        reviewer_id INTEGER,
+        period_start DATE NOT NULL,
+        period_end DATE NOT NULL,
+        overall_rating DECIMAL(3,2),
+        status VARCHAR(50) NOT NULL DEFAULT 'draft',
+        summary TEXT NOT NULL DEFAULT '',
+        metadata JSONB NOT NULL DEFAULT '{}'::jsonb,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`);
+      await client.query(`CREATE TABLE IF NOT EXISTS performance_goals (
+        id SERIAL PRIMARY KEY,
+        review_id INTEGER,
+        title VARCHAR(255) NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        target_date DATE,
+        status VARCHAR(50) NOT NULL DEFAULT 'open',
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`);
+      await client.query(`CREATE TABLE IF NOT EXISTS performance_feedback (
+        id SERIAL PRIMARY KEY,
+        review_id INTEGER,
+        commenter_id INTEGER,
+        comment TEXT NOT NULL,
+        rating DECIMAL(3,2) DEFAULT NULL,
+        created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+      )`);
+    } catch (e) {
+      // ignore
+    }
 
     // Fast-check: if key test tables/attributes already exist, skip expensive full apply.
     const tbl = await client.query("SELECT 1 FROM information_schema.tables WHERE table_schema='test' AND table_name='resource_types' LIMIT 1");

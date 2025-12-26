@@ -131,6 +131,15 @@ function App() {
                     />
 
                     <Route
+                      path="/messages"
+                      element={
+                        <ProtectedRoute>
+                          <MessagesPage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
                       path="/admin/applications"
                       element={
                         <ProtectedRoute roles={['admin']}>
@@ -252,6 +261,15 @@ function App() {
                       element={
                         <ProtectedRoute roles={['admin', 'staff']}>
                           <AdminMaintenancePage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/admin/announcements"
+                      element={
+                        <ProtectedRoute roles={['admin', 'staff']}>
+                          <EnhancedAnnouncementsPage />
                         </ProtectedRoute>
                       }
                     />
