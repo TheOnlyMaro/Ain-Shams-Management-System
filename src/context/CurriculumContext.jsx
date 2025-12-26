@@ -105,6 +105,44 @@ export const CurriculumProvider = ({ children }) => {
     }
   }, [user, fetchEnrolledCourses]);
 
+  const fetchGrades = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API_URL}/curriculum/grades`, {
+        headers: getAuthHeaders(),
+      });
+      if (res.data.success) {
+        // Transform backend data format to frontend format
+        const transformedGrades = res.data.data.map((grade) => {
+          const course = courses.find((c) => String(c.id) === String(grade.courseId));
+          return {
+            id: grade.id,
+            assignmentId: grade.assignmentId,
+            courseId: grade.courseId,
+            courseName: course?.name || 'Unknown Course',
+            assignmentTitle: grade.assignmentTitle || 'Assignment',
+            studentId: grade.studentId,
+            studentName: grade.studentName || '',
+            points: Number(grade.points) || 0,
+            totalPoints: Number(grade.assignmentTotalPoints) || 100,
+            letterGrade: computeLetterGrade(Number(grade.points) || 0, Number(grade.assignmentTotalPoints) || 100),
+            feedback: grade.feedback || '',
+            gradedAt: grade.updatedAt || grade.createdAt || new Date().toISOString(),
+          };
+        });
+        setGrades(transformedGrades);
+      }
+    } catch (err) {
+      console.error('Error fetching grades:', err);
+    }
+  }, [API_URL, getAuthHeaders, courses]);
+
+  // Fetch grades after courses are loaded
+  useEffect(() => {
+    if (courses.length > 0 && user) {
+      fetchGrades();
+    }
+  }, [courses.length, user, fetchGrades]);
+
   const getCourses = useCallback(() => courses, [courses]);
 
   const getCourseById = useCallback(
@@ -286,26 +324,61 @@ export const CurriculumProvider = ({ children }) => {
   );
 
   const addGrade = useCallback(
-    (assignmentId, gradeData) => {
-      const newGrade = {
-        id: `grade_${Date.now()}`,
-        assignmentId: assignmentId || gradeData.assignmentId || null,
-        courseId: gradeData.courseId,
-        courseName: gradeData.courseName,
-        assignmentTitle: gradeData.assignmentTitle,
-        studentId: gradeData.studentId || null,
-        studentName: gradeData.studentName || null,
-        points: Number(gradeData.points),
-        totalPoints: Number(gradeData.totalPoints),
-        letterGrade:
-          gradeData.letterGrade || computeLetterGrade(Number(gradeData.points), Number(gradeData.totalPoints)),
-        feedback: gradeData.feedback || '',
-        gradedAt: new Date().toISOString(),
-      };
-      setGrades((prev) => [newGrade, ...prev]);
-      return newGrade;
+    async (assignmentId, gradeData) => {
+      try {
+        const assignmentIdNum = typeof assignmentId === 'string' ? parseInt(assignmentId, 10) : assignmentId;
+        const courseIdNum = typeof gradeData.courseId === 'string' ? parseInt(gradeData.courseId, 10) : gradeData.courseId;
+        const studentIdNum = gradeData.studentId 
+          ? (typeof gradeData.studentId === 'string' ? parseInt(gradeData.studentId, 10) : gradeData.studentId)
+          : null;
+
+        if (!studentIdNum || !Number.isInteger(studentIdNum)) {
+          throw new Error('Valid student ID is required');
+        }
+
+        const res = await axios.post(
+          `${API_URL}/curriculum/grades`,
+          {
+            courseId: courseIdNum,
+            assignmentId: assignmentIdNum,
+            studentId: studentIdNum,
+            points: Number(gradeData.points) || 0,
+            feedback: gradeData.feedback || '',
+          },
+          {
+            headers: getAuthHeaders(),
+          }
+        );
+        if (res.data.success) {
+          const course = courses.find((c) => String(c.id) === String(gradeData.courseId));
+          const assignment = assignments.find((a) => String(a.id) === String(assignmentId));
+          const newGrade = {
+            id: res.data.data.id,
+            assignmentId: res.data.data.assignmentId,
+            courseId: res.data.data.courseId,
+            courseName: course?.name || gradeData.courseName || 'Unknown Course',
+            assignmentTitle: res.data.data.assignmentTitle || assignment?.title || 'Assignment',
+            studentId: res.data.data.studentId,
+            studentName: res.data.data.studentName || gradeData.studentName || '',
+            points: Number(res.data.data.points) || 0,
+            totalPoints: Number(res.data.data.assignmentTotalPoints) || Number(gradeData.totalPoints) || 100,
+            letterGrade: computeLetterGrade(
+              Number(res.data.data.points) || 0,
+              Number(res.data.data.assignmentTotalPoints) || Number(gradeData.totalPoints) || 100
+            ),
+            feedback: res.data.data.feedback || '',
+            gradedAt: res.data.data.updatedAt || res.data.data.createdAt || new Date().toISOString(),
+          };
+          setGrades((prev) => [newGrade, ...prev]);
+          return newGrade;
+        }
+        throw new Error('Failed to create grade');
+      } catch (err) {
+        console.error('Error creating grade:', err);
+        throw err;
+      }
     },
-    []
+    [API_URL, getAuthHeaders, courses, assignments]
   );
 
   const value = {
