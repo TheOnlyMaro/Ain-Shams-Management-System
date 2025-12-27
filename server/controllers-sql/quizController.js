@@ -13,7 +13,7 @@ exports.createQuiz = async (req, res) => {
   const client = await pool.connect();
   try {
     const { courseId, title, description, dueDate, timeLimitMinutes, questions } = req.body;
-    const userId = req.user.userId; // From authMiddleware
+    const userId = req.user.id || req.user.userId; // From authMiddleware
 
     if (!courseId || !title || !questions || !Array.isArray(questions)) {
       return res.status(400).json({ message: 'Missing required fields or invalid questions format.' });
@@ -130,7 +130,7 @@ exports.getQuizDetails = async (req, res) => {
 exports.startQuiz = async (req, res) => {
   try {
     const { quizId } = req.params;
-    const studentId = req.user.userId;
+    const studentId = req.user.id || req.user.userId;
 
     // Check if already exists
     const existing = await dbQuery(
@@ -160,7 +160,7 @@ exports.submitQuiz = async (req, res) => {
   try {
     const { quizId } = req.params;
     const { answers } = req.body; // Array of { questionId, answerText }
-    const studentId = req.user.userId;
+    const studentId = req.user.id || req.user.userId;
 
     // 1. Get submission record
     const subRes = await client.query(
@@ -253,7 +253,7 @@ exports.submitQuiz = async (req, res) => {
 exports.getStudentResult = async (req, res) => {
   try {
     const { quizId } = req.params;
-    const studentId = req.user.userId;
+    const studentId = req.user.id || req.user.userId;
 
     // Get submission
     const subRes = await dbQuery(

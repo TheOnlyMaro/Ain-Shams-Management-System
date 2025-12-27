@@ -88,23 +88,67 @@ export const announcementApi = {
     apiClient.delete(`/announcements/${id}`),
 };
 
-export const payrollApi = {
-  // List payruns
-  getPayruns: () => apiClient.get('/payrolls'),
-  getPayrun: (id) => apiClient.get(`/payrolls/${id}`),
-  createPayrun: (data) => apiClient.post('/payrolls', data),
-  addEntry: (payrunId, data) => apiClient.post(`/payrolls/${payrunId}/entries`, data),
-  addComponent: (entryId, data) => apiClient.post(`/payrolls/entries/${entryId}/components`, data),
-  finalize: (payrunId) => apiClient.patch(`/payrolls/${payrunId}/finalize`),
+export const quizApi = {
+  createQuiz: (data) =>
+    apiClient.post('/quizzes', data),
+  getQuizzesByCourse: (courseId) =>
+    apiClient.get(`/quizzes/course/${courseId}`),
+  getQuizDetails: (quizId) =>
+    apiClient.get(`/quizzes/${quizId}`),
+  startQuiz: (quizId) =>
+    apiClient.post(`/quizzes/${quizId}/start`),
+  submitQuiz: (quizId, answers) =>
+    apiClient.post(`/quizzes/${quizId}/submit`, { answers }),
+  getStudentResult: (quizId) =>
+    apiClient.get(`/quizzes/${quizId}/result`),
 };
 
-export const performanceApi = {
-  listReviews: (params) => apiClient.get('/performance', { params }),
-  getReview: (id) => apiClient.get(`/performance/${id}`),
-  createReview: (data) => apiClient.post('/performance', data),
-  addGoal: (reviewId, data) => apiClient.post(`/performance/${reviewId}/goals`, data),
-  addFeedback: (reviewId, data) => apiClient.post(`/performance/${reviewId}/feedback`, data),
-  updateReview: (id, data) => apiClient.patch(`/performance/${id}`, data),
+export const parentApi = {
+  connectChild: (data) =>
+    apiClient.post('/parents/connect', data),
+  getChildren: () =>
+    apiClient.get('/parents/children'),
+  getChildProgress: (studentId) =>
+    apiClient.get(`/parents/children/${studentId}/progress`),
+};
+
+export const resourcesApi = {
+  getResources: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.search) query.append('search', params.search);
+    return apiClient.get(`/resources?${query.toString()}`);
+  },
+  getResource: (resourceId) =>
+    apiClient.get(`/resources/${resourceId}`),
+  createResource: (data) =>
+    apiClient.post('/resources', data),
+  updateResource: (resourceId, data) =>
+    apiClient.patch(`/resources/${resourceId}`, data),
+  deleteResource: (resourceId) =>
+    apiClient.delete(`/resources/${resourceId}`),
+  getResourceTypes: () =>
+    apiClient.get('/resources/types'),
+  createResourceType: (data) =>
+    apiClient.post('/resources/types', data),
+  updateResourceType: (typeId, data) =>
+    apiClient.patch(`/resources/types/${typeId}`, data),
+};
+
+export const allocationsApi = {
+  getAllocations: (params = {}) => {
+    const query = new URLSearchParams();
+    if (params.resourceId) query.append('resourceId', params.resourceId);
+    if (params.userId) query.append('userId', params.userId);
+    return apiClient.get(`/allocations?${query.toString()}`);
+  },
+  getAllocation: (allocationId) =>
+    apiClient.get(`/allocations/${allocationId}`),
+  createAllocation: (data) =>
+    apiClient.post('/allocations', data),
+  updateAllocation: (allocationId, data) =>
+    apiClient.patch(`/allocations/${allocationId}`, data),
+  deleteAllocation: (allocationId) =>
+    apiClient.delete(`/allocations/${allocationId}`),
 };
 
 export default apiClient;

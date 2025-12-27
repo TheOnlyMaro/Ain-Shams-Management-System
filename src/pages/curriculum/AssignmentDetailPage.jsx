@@ -27,8 +27,8 @@ export const AssignmentDetailPage = () => {
             <CardBody>
               <p className="text-secondary-600">The assignment you're looking for doesn't exist.</p>
               <div className="mt-4">
-                <Link to="/assignments" className="text-primary-600 hover:text-primary-700 font-medium">
-                  Back to Assignments
+                <Link to="/courses" className="text-primary-600 hover:text-primary-700 font-medium">
+                  Back to Courses
                 </Link>
               </div>
             </CardBody>
@@ -52,7 +52,7 @@ export const AssignmentDetailPage = () => {
       fileName: file?.name || null,
     });
 
-    navigate('/assignments');
+    navigate(-1);
   };
 
   return (

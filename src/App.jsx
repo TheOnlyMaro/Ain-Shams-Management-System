@@ -5,6 +5,7 @@ import { CurriculumProvider } from './context/CurriculumContext';
 import { AdmissionProvider } from './context/AdmissionContext';
 import { AnnouncementProvider } from './context/AnnouncementContext';
 import { CampusProvider } from './context/CampusContext';
+import { ResourcesProvider } from './context/ResourcesContext';
 import { Navbar } from './components/common';
 import { ProtectedRoute } from './components/auth/ProtectedRoute';
 
@@ -17,14 +18,16 @@ import { SignupPage } from './pages/auth/SignupPage';
 import { DashboardPage } from './pages/DashboardPage';
 import { CoursesPage } from './pages/curriculum/CoursesPage';
 import { CourseDetailPage } from './pages/curriculum/CourseDetailPage';
-import { AssignmentsPage } from './pages/curriculum/AssignmentsPage';
 import { AssignmentDetailPage } from './pages/curriculum/AssignmentDetailPage';
-import { StaffAssignmentsPage } from './pages/curriculum/StaffAssignmentsPage';
 import { GradesPage } from './pages/curriculum/GradesPage';
 import { StaffGradesPage } from './pages/curriculum/StaffGradesPage';
-import { MaterialsPage } from './pages/curriculum/MaterialsPage';
+import { StaffQuizzesPage } from './pages/curriculum/StaffQuizzesPage';
+import { StudentQuizzesPage } from './pages/curriculum/StudentQuizzesPage';
+import { QuizTakePage } from './pages/curriculum/QuizTakePage';
+import { ParentProgressPage } from './pages/parent/ParentProgressPage';
 
 import { AdmissionPage } from './pages/admission/AdmissionPage';
+import { ResourcesPage, ManageResourcesPage, AllocationsPage } from './pages/resources';
 
 // Admin pages (NAMED exports ✅)
 import { AdminApplicationsPage } from './pages/admin/AdminApplicationsPage';
@@ -55,9 +58,10 @@ function App() {
           <AdmissionProvider>
             <AnnouncementProvider>
               <CampusProvider>
-                <div className="min-h-screen bg-gray-50">
-                  <Navbar />
-                  <Routes>
+                <ResourcesProvider>
+                  <div className="min-h-screen bg-gray-50">
+                    <Navbar />
+                    <Routes>
                     <Route path="/" element={<HomePage />} />
                     <Route path="/login" element={<LoginPage />} />
                     <Route path="/signup" element={<SignupPage />} />
@@ -85,15 +89,6 @@ function App() {
                       element={
                         <ProtectedRoute>
                           <CourseDetailPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    <Route
-                      path="/assignments"
-                      element={
-                        <ProtectedRoute>
-                          <AssignmentsPage />
                         </ProtectedRoute>
                       }
                     />
@@ -187,28 +182,46 @@ function App() {
                     />
 
                     <Route
-                      path="/staff/assignments"
-                      element={
-                        <ProtectedRoute roles={['staff']}>
-                          <StaffAssignmentsPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    <Route
-                      path="/staff/materials"
-                      element={
-                        <ProtectedRoute roles={['staff']}>
-                          <MaterialsPage />
-                        </ProtectedRoute>
-                      }
-                    />
-
-                    <Route
                       path="/staff/grades"
                       element={
                         <ProtectedRoute roles={['staff']}>
                           <StaffGradesPage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/staff/quizzes"
+                      element={
+                        <ProtectedRoute roles={['staff', 'admin']}>
+                          <StaffQuizzesPage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/quizzes"
+                      element={
+                        <ProtectedRoute roles={['student']}>
+                          <StudentQuizzesPage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/quizzes/:quizId"
+                      element={
+                        <ProtectedRoute roles={['student']}>
+                          <QuizTakePage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/parent/progress"
+                      element={
+                        <ProtectedRoute roles={['parent']}>
+                          <ParentProgressPage />
                         </ProtectedRoute>
                       }
                     />
@@ -312,9 +325,46 @@ function App() {
                       }
                     />
 
+                    <Route
+                      path="/messages"
+                      element={
+                        <ProtectedRoute>
+                          <MessagesPage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/resources"
+                      element={
+                        <ProtectedRoute roles={['student']}>
+                          <ResourcesPage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/staff/resources"
+                      element={
+                        <ProtectedRoute roles={['staff', 'admin']}>
+                          <ManageResourcesPage />
+                        </ProtectedRoute>
+                      }
+                    />
+
+                    <Route
+                      path="/staff/resources/allocations"
+                      element={
+                        <ProtectedRoute roles={['staff', 'admin']}>
+                          <AllocationsPage />
+                        </ProtectedRoute>
+                      }
+                    />
+
                     <Route path="*" element={<Navigate to="/" replace />} />
                   </Routes>
                 </div>
+                </ResourcesProvider>
               </CampusProvider>
             </AnnouncementProvider>
           </AdmissionProvider>
